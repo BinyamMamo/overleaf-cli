@@ -2,6 +2,11 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **`olcli comments list` (and `resolve`, `reopen`, `delete`, which look the thread up first) joins docs over four sockets instead of one doc at a time** - the command joined every doc in the project serially at about 0.25 s each, so a 43-doc project took around 14 s. One socket cannot overlap requests, since the long-poll gives an acknowledgment to whichever request polls first and the others time out, so the docs are spread across a small pool of sockets instead
+
 ## [0.13.1] - 2026-10-09
 
 ### Fixed
