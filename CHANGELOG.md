@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.14.0] - 2026-10-15
 
 ### Added
 - **`olcli comments list --concurrency <n>` and the `OLCLI_CONCURRENCY` environment variable** set how many sockets fetch docs in parallel, from 1 to 8 (default 4). The option takes precedence over the variable, and `1` restores the previous one-socket behavior. Values outside the range are rejected with an error
