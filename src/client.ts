@@ -2049,6 +2049,30 @@ export class OverleafClient {
     return response.body as Record<string, { messages: CommentMessage[]; resolved?: boolean; resolved_at?: string; resolved_by_user_id?: string }>;
   }
 
+  /**
+   * Join every doc over a small pool of sockets. One socket cannot overlap
+   * requests: its long-poll hands an ack to whichever request polls first, so
+   * concurrent joinDoc calls on a shared session time out.
+   */
+  private async joinDocuments(projectId: string, docs: ProjectDoc[], concurrency = 4): Promise<JoinedDocument[]> {
+    const joined: JoinedDocument[] = new Array(docs.length);
+    let next = 0;
+
+    await Promise.all(Array.from({ length: Math.min(concurrency, docs.length) }, async () => {
+      const session = await this.openProjectSocket(projectId);
+      try {
+        while (next < docs.length) {
+          const index = next++;
+          joined[index] = await this.joinDocument(session, docs[index].id);
+        }
+      } finally {
+        await this.closeProjectSocket(session);
+      }
+    }));
+
+    return joined;
+  }
+
   async listComments(projectId: string, options: ListCommentsOptions = {}): Promise<ProjectComment[]> {
     const status = options.status || 'all';
     const contextLines = options.contextLines || 0;
@@ -2056,54 +2080,27 @@ export class OverleafClient {
     const docs = this.collectProjectDocs(projectInfo);
     const threads = await this.getCommentThreads(projectId);
     const comments: ProjectComment[] = [];
-    const session = await this.openProjectSocket(projectId);
+    const joinedDocs = await this.joinDocuments(projectId, docs);
 
-    try {
-      for (const doc of docs) {
-        const joinedDoc = await this.joinDocument(session, doc.id);
+    for (const [index, doc] of docs.entries()) {
+      const joinedDoc = joinedDocs[index];
 
-        if (joinedDoc.type === 'history-ot') {
-          for (const comment of joinedDoc.ranges.comments || []) {
-            const ranges = comment.ranges || [];
-            const firstRange = ranges[0];
-            if (!firstRange) continue;
-            const selectedText = ranges
-              .map((range: any) => joinedDoc.content.slice(range.pos, range.pos + range.length))
-              .join('');
-            const location = this.positionToLineColumn(joinedDoc.content, firstRange.pos);
-            const thread = threads[comment.id] || { messages: [] };
-            const resolved = Boolean(comment.resolved || thread.resolved);
-            comments.push({
-              threadId: comment.id,
-              docId: doc.id,
-              path: doc.path,
-              position: firstRange.pos,
-              line: location.line,
-              column: location.column,
-              selectedText,
-              resolved,
-              messages: thread.messages || [],
-              context: this.buildCommentContext(joinedDoc.content, location.line, contextLines)
-            });
-          }
-          continue;
-        }
-
+      if (joinedDoc.type === 'history-ot') {
         for (const comment of joinedDoc.ranges.comments || []) {
-          const op = comment.op || {};
-          const threadId = op.t || comment.id;
-          if (!threadId || typeof op.p !== 'number') continue;
-          const selectedText = typeof op.c === 'string'
-            ? op.c
-            : joinedDoc.content.slice(op.p, op.p + (op.c?.length || 0));
-          const location = this.positionToLineColumn(joinedDoc.content, op.p);
-          const thread = threads[threadId] || { messages: [] };
-          const resolved = Boolean(comment.resolved || op.resolved || thread.resolved);
+          const ranges = comment.ranges || [];
+          const firstRange = ranges[0];
+          if (!firstRange) continue;
+          const selectedText = ranges
+            .map((range: any) => joinedDoc.content.slice(range.pos, range.pos + range.length))
+            .join('');
+          const location = this.positionToLineColumn(joinedDoc.content, firstRange.pos);
+          const thread = threads[comment.id] || { messages: [] };
+          const resolved = Boolean(comment.resolved || thread.resolved);
           comments.push({
-            threadId,
+            threadId: comment.id,
             docId: doc.id,
             path: doc.path,
-            position: op.p,
+            position: firstRange.pos,
             line: location.line,
             column: location.column,
             selectedText,
@@ -2112,9 +2109,32 @@ export class OverleafClient {
             context: this.buildCommentContext(joinedDoc.content, location.line, contextLines)
           });
         }
+        continue;
       }
-    } finally {
-      await this.closeProjectSocket(session);
+
+      for (const comment of joinedDoc.ranges.comments || []) {
+        const op = comment.op || {};
+        const threadId = op.t || comment.id;
+        if (!threadId || typeof op.p !== 'number') continue;
+        const selectedText = typeof op.c === 'string'
+          ? op.c
+          : joinedDoc.content.slice(op.p, op.p + (op.c?.length || 0));
+        const location = this.positionToLineColumn(joinedDoc.content, op.p);
+        const thread = threads[threadId] || { messages: [] };
+        const resolved = Boolean(comment.resolved || op.resolved || thread.resolved);
+        comments.push({
+          threadId,
+          docId: doc.id,
+          path: doc.path,
+          position: op.p,
+          line: location.line,
+          column: location.column,
+          selectedText,
+          resolved,
+          messages: thread.messages || [],
+          context: this.buildCommentContext(joinedDoc.content, location.line, contextLines)
+        });
+      }
     }
 
     return comments

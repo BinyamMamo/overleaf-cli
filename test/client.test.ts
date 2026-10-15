@@ -115,3 +115,41 @@ test('createProject reports HTTP errors and malformed success responses', async 
     }
   );
 });
+
+test('listComments joins docs over several sockets, not one doc at a time on one socket', async () => {
+  const client: any = new OverleafClient({ cookies: { session: 'secret' }, csrf: 'csrf-token' });
+  const docs = Array.from({ length: 10 }, (_, i) => ({ _id: `doc${i}`, name: `f${i}.tex` }));
+  client.getProjectInfo = async () => ({ rootFolder: [{ docs, folders: [] }] });
+  client.getCommentThreads = async () => ({});
+
+  let open = 0;
+  const sessions = new Set<object>();
+  const joinedBy = new Map<string, object>();
+  client.openProjectSocket = async () => {
+    const session = {};
+    sessions.add(session);
+    open++;
+    return session;
+  };
+  client.closeProjectSocket = async () => { open--; };
+  client.joinDocument = async (session: object, docId: string) => {
+    joinedBy.set(docId, session);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    const index = Number(docId.slice(3));
+    return {
+      docId,
+      content: 'hello world',
+      lines: ['hello world'],
+      version: 1,
+      type: 'sharejs-text-ot',
+      ranges: index === 7 ? { comments: [{ op: { c: 'world', p: 6, t: 'thread7' } }] } : {}
+    };
+  };
+
+  const comments = await client.listComments('project');
+
+  assert.equal(joinedBy.size, 10);
+  assert(sessions.size > 1 && sessions.size <= 4, `expected 2-4 sockets, got ${sessions.size}`);
+  assert.equal(open, 0, 'every socket is closed');
+  assert.deepEqual(comments.map((c: any) => [c.threadId, c.path]), [['thread7', 'f7.tex']]);
+});
