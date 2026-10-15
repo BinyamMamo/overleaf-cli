@@ -13,7 +13,7 @@ import { writeFileSync, readFileSync, existsSync, mkdirSync, mkdtempSync, rmSync
 import { join, dirname, basename } from 'node:path';
 import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { OverleafClient } from './client.js';
+import { OverleafClient, resolveCommentConcurrency } from './client.js';
 import { resolveRemotePath, resolveWithin, normalizeRemotePath } from './paths.js';
 import { planProjectRenames } from './rename-plan.js';
 import { scanLocalFiles } from './scan.js';
@@ -481,6 +481,7 @@ commentsCmd
   .description('List project comments with selected source text and location')
   .option('--status <status>', 'Filter by status: open, resolved, or all (default: all)', 'all')
   .option('--context <n>', 'Include N lines of source context around each comment', parseInt)
+  .option('--concurrency <n>', 'Sockets used to fetch docs in parallel, 1-8 (default: OLCLI_CONCURRENCY or 4)')
   .option('--json', 'Output as JSON')
   .option('--cookie <session>', 'Session cookie override')
   .action(async (project, options) => {
@@ -498,7 +499,8 @@ commentsCmd
       }
       const comments = await client.listComments(proj.id, {
         status: status as 'all' | 'open' | 'resolved',
-        contextLines
+        contextLines,
+        concurrency: options.concurrency === undefined ? undefined : resolveCommentConcurrency(options.concurrency)
       });
       spinner.stop();
 

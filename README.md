@@ -155,7 +155,7 @@ All commands auto-detect the project when run from a synced directory (contains 
 | `olcli pdf [project]` | Compile and download PDF |
 | `olcli output [type]` | Download compile output files |
 | `olcli zip [project]` | Download project as zip archive |
-| `olcli comments list [project]` | List comments (`--status`, `--context`) |
+| `olcli comments list [project]` | List comments (`--status`, `--context`, `--concurrency`) |
 | `olcli comments add <file> <msg>` | Add a comment to selected text |
 | `olcli comments reply <id> <body>` | Reply to a comment thread |
 | `olcli comments resolve <id>` | Resolve a comment thread |

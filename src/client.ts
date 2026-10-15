@@ -113,6 +113,26 @@ export type CommentStatus = 'all' | 'open' | 'resolved';
 export interface ListCommentsOptions {
   status?: CommentStatus;
   contextLines?: number;
+  /** Sockets used to join docs in parallel (1-8). Defaults to OLCLI_CONCURRENCY, else 4. */
+  concurrency?: number;
+}
+
+export const DEFAULT_COMMENT_CONCURRENCY = 4;
+export const MAX_COMMENT_CONCURRENCY = 8;
+
+/**
+ * Resolve the socket pool size from an explicit value, then OLCLI_CONCURRENCY,
+ * then the default. Throws on anything that is not an integer from 1 to 8.
+ */
+export function resolveCommentConcurrency(value?: number | string, env: NodeJS.ProcessEnv = process.env): number {
+  const source = value ?? env.OLCLI_CONCURRENCY;
+  if (source === undefined || source === '') return DEFAULT_COMMENT_CONCURRENCY;
+  const parsed = typeof source === 'number' ? source : Number(String(source).trim());
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > MAX_COMMENT_CONCURRENCY) {
+    const origin = value ?? `OLCLI_CONCURRENCY=${env.OLCLI_CONCURRENCY}`;
+    throw new Error(`Concurrency must be an integer from 1 to ${MAX_COMMENT_CONCURRENCY} (got ${origin})`);
+  }
+  return parsed;
 }
 
 export interface AddCommentOptions {
@@ -1121,7 +1141,9 @@ export class OverleafClient {
     });
 
     if (!handshakeResponse.ok) {
-      throw new Error(`Failed to open project socket: ${handshakeResponse.status}`);
+      const error = new Error(`Failed to open project socket: ${handshakeResponse.status}`) as Error & { status?: number };
+      error.status = handshakeResponse.status;
+      throw error;
     }
 
     this.applySetCookieHeaders(handshakeResponse.headers['set-cookie'] as string[] | undefined);
@@ -2053,23 +2075,49 @@ export class OverleafClient {
    * Join every doc over a small pool of sockets. One socket cannot overlap
    * requests: its long-poll hands an ack to whichever request polls first, so
    * concurrent joinDoc calls on a shared session time out.
+   *
+   * The first socket must open. Extra sockets that are rate limited (HTTP 429)
+   * are dropped and the remaining sockets take over their share, down to one.
+   * After the first join failure no socket starts another join; the error is
+   * rethrown once every socket has been closed.
    */
-  private async joinDocuments(projectId: string, docs: ProjectDoc[], concurrency = 4): Promise<JoinedDocument[]> {
+  private async joinDocuments(projectId: string, docs: ProjectDoc[], concurrency = DEFAULT_COMMENT_CONCURRENCY): Promise<JoinedDocument[]> {
     const joined: JoinedDocument[] = new Array(docs.length);
-    let next = 0;
+    if (docs.length === 0) return joined;
 
-    await Promise.all(Array.from({ length: Math.min(concurrency, docs.length) }, async () => {
-      const session = await this.openProjectSocket(projectId);
+    let next = 0;
+    let failure: unknown;
+
+    const work = async (session: ProjectSocketSession): Promise<void> => {
       try {
-        while (next < docs.length) {
+        while (failure === undefined && next < docs.length) {
           const index = next++;
-          joined[index] = await this.joinDocument(session, docs[index].id);
+          try {
+            joined[index] = await this.joinDocument(session, docs[index].id);
+          } catch (error) {
+            if (failure === undefined) failure = error;
+          }
         }
       } finally {
         await this.closeProjectSocket(session);
       }
-    }));
+    };
 
+    const first = await this.openProjectSocket(projectId);
+    const extra = Array.from({ length: Math.min(concurrency, docs.length) - 1 }, async () => {
+      let session: ProjectSocketSession;
+      try {
+        session = await this.openProjectSocket(projectId);
+      } catch (error) {
+        if ((error as { status?: number }).status === 429) return;
+        if (failure === undefined) failure = error;
+        return;
+      }
+      await work(session);
+    });
+
+    await Promise.allSettled([work(first), ...extra]);
+    if (failure !== undefined) throw failure;
     return joined;
   }
 
@@ -2080,7 +2128,7 @@ export class OverleafClient {
     const docs = this.collectProjectDocs(projectInfo);
     const threads = await this.getCommentThreads(projectId);
     const comments: ProjectComment[] = [];
-    const joinedDocs = await this.joinDocuments(projectId, docs);
+    const joinedDocs = await this.joinDocuments(projectId, docs, resolveCommentConcurrency(options.concurrency));
 
     for (const [index, doc] of docs.entries()) {
       const joinedDoc = joinedDocs[index];

@@ -4,8 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+- **`olcli comments list --concurrency <n>` and the `OLCLI_CONCURRENCY` environment variable** set how many sockets fetch docs in parallel, from 1 to 8 (default 4). The option takes precedence over the variable, and `1` restores the previous one-socket behavior. Values outside the range are rejected with an error
+
 ### Changed
 - **`olcli comments list` (and `resolve`, `reopen`, `delete`, which look the thread up first) joins docs over four sockets instead of one doc at a time** - the command joined every doc in the project serially at about 0.25 s each, so a 43-doc project took around 14 s. One socket cannot overlap requests, since the long-poll gives an acknowledgment to whichever request polls first and the others time out, so the docs are spread across a small pool of sockets instead
+- **A failed doc join stops the socket pool cleanly** - after the first failure no socket starts another join, and the error is reported only after every socket has been closed. Previously the remaining sockets kept joining docs in the background after the command had already failed
+- **Extra sockets that are rate limited fall back to fewer sockets** - if Overleaf answers HTTP 429 when an additional socket opens, that socket is dropped and the remaining ones take over its docs, down to a single socket. A 429 on the first socket still fails the command
 
 ## [0.13.1] - 2026-10-09
 
