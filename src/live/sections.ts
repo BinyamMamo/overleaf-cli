@@ -61,7 +61,7 @@ export function findSections(text: string): Section[] {
 
   const docEnd = text.search(/\\end\{document\}/);
   const limit = docEnd === -1 ? text.length : docEnd;
-  return heads.map((head, index) => {
+  const sections = heads.map((head, index) => {
     let end = limit;
     for (const next of heads.slice(index + 1)) {
       if (next.level <= head.level) {
@@ -76,6 +76,21 @@ export function findSections(text: string): Section[] {
     }
     return { ...head, end: Math.max(end, head.start) };
   });
+
+  // Environments that work like sections but have no heading command.
+  for (const match of text.matchAll(/\\begin\{(abstract)\}[\s\S]*?\\end\{\1\}\n?/g)) {
+    const start = match.index!;
+    if (isCommentedOut(text, start)) continue;
+    sections.push({
+      level: 2,
+      command: match[1],
+      title: 'Abstract',
+      start,
+      end: start + match[0].length,
+      line: text.slice(0, start).split('\n').length,
+    });
+  }
+  return sections.sort((a, b) => a.start - b.start);
 }
 
 /**

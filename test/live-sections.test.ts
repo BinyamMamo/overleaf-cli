@@ -55,3 +55,10 @@ test('moveRange: agent edits at the edges stay inside the claim', () => {
   assert.deepEqual(moveRange(r, [{ p: 20, i: 'xyz' }], true), { range: { start: 10, end: 23 }, touched: false });
   assert.deepEqual(moveRange(r, [{ p: 10, i: 'xyz' }], true), { range: { start: 10, end: 23 }, touched: false });
 });
+
+test('the abstract environment can be claimed like a section', () => {
+  const text = '\\begin{document}\n\\begin{abstract}\nShort.\n\\end{abstract}\n\n\\section{Intro}\nHi.\n\\end{document}\n';
+  const abstract = findSection(text, 'abstract');
+  assert.equal(text.slice(abstract.start, abstract.end), '\\begin{abstract}\nShort.\n\\end{abstract}\n');
+  assert.equal(findSection(text, 'intro').title, 'Intro');
+});
