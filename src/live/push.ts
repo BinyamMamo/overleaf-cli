@@ -128,7 +128,7 @@ export class LivePusher {
     if (!this.live.listDocs().some(d => d.path === path) || !isUtf8Text(content)) return { status: 'not-doc' };
     const doc = await this.live.doc(path);
     const local = content.toString('utf-8');
-    const { op, merged, remoteChanged } = mergeText(readBase(this.dir, path), doc.content, local);
+    const { op, remoteChanged } = mergeText(readBase(this.dir, path), doc.content, local);
     if (!op.length) {
       saveBase(this.dir, path, doc.content);
       return { status: 'unchanged' };

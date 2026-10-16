@@ -1,0 +1,93 @@
+/* olf extension: claimed-section band, banner and confirm dialog. */
+.olf-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+.olf-band {
+  position: fixed;
+  background: rgba(214, 140, 20, 0.10);
+  border-left: 3px solid #c77d0a;
+  box-sizing: border-box;
+}
+.olf-band.olf-paused {
+  background: rgba(120, 120, 120, 0.10);
+  border-left-color: #8a8a8a;
+}
+.olf-tag {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  font: 600 11px/1.6 system-ui, sans-serif;
+  color: #fff;
+  background: #a8670a;
+  padding: 0 6px;
+  border-radius: 0 0 3px 3px;
+}
+.olf-paused .olf-tag {
+  background: #6b6b6b;
+}
+.olf-banner {
+  position: fixed;
+  z-index: 30;
+  width: 360px;
+  font: 13px/1.4 system-ui, sans-serif;
+  color: #2b2116;
+  background: #fbf3e4;
+  border: 1px solid #d9b77a;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+.olf-banner button {
+  margin-top: 6px;
+  font: inherit;
+  padding: 3px 10px;
+  border: 1px solid #a8670a;
+  background: #a8670a;
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.olf-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(20, 16, 10, 0.35);
+  display: grid;
+  place-items: center;
+}
+.olf-modal {
+  width: min(420px, calc(100vw - 32px));
+  font: 14px/1.5 system-ui, sans-serif;
+  color: #2b2116;
+  background: #fffaf2;
+  border: 1px solid #d9b77a;
+  border-radius: 4px;
+  padding: 16px 18px;
+}
+.olf-modal p {
+  margin: 0 0 10px;
+}
+.olf-modal-title {
+  font-weight: 600;
+}
+.olf-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.olf-modal button {
+  font: inherit;
+  padding: 5px 12px;
+  border: 1px solid #b9a27a;
+  background: transparent;
+  color: inherit;
+  border-radius: 3px;
+  cursor: pointer;
+}
+.olf-modal button.olf-primary {
+  background: #a8670a;
+  border-color: #a8670a;
+  color: #fff;
+}

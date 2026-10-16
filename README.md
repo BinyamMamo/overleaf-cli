@@ -1,6 +1,34 @@
-# olcli — Overleaf CLI
+# overleaf-cli (olf): Overleaf from the terminal, and live co-writing with an AI agent
 
-**Command-line interface for Overleaf** — Sync, manage, and compile LaTeX projects from your terminal.
+**overleaf-cli** is a fork of [olcli](https://github.com/aloth/olcli) by Alexander Loth. It keeps every olcli command and adds two things:
+
+- **Sign in through a browser window.** `olf login` opens Overleaf, you sign in any way you normally do (Google, ORCID, institutional SSO, password), and olf picks up the session itself. No copying cookies out of DevTools. Expired sessions are renewed in the background.
+- **Work on the same paper as your AI agent, at the same time.** The agent (Claude Code, Cursor, any MCP client) claims a section, edits it live like a co-author would, and stops the moment you start typing there. You stay in the Overleaf editor and watch the PDF. Nothing you write gets overwritten. See [docs/LIVE.md](docs/LIVE.md).
+
+```bash
+git clone https://github.com/BinyamMamo/overleaf-cli && cd overleaf-cli
+npm install && npm run build && npm link   # installs olf and olf-mcp
+olf login
+claude mcp add olf -- olf-mcp
+```
+
+Then ask your agent something like "tighten the introduction of my thesis on Overleaf". It claims the Introduction, you see a comment there with its task and its cursor moving, and when it finishes it compiles the project and releases the section.
+
+| What | olcli | olf |
+|---|---|---|
+| Sign in | paste a session cookie | `olf login` browser window, auto-renewed |
+| Agent edits | upload whole files (overwrites concurrent typing) | live edits that merge with yours |
+| Agent and human in the same section | last write wins | agent pauses until you reply "done" |
+| `push` / `sync` of `.tex` files | overwrite the remote file | three-way merge sent as live edits |
+| Suggestions | none | comment with the new text, reply "accept" or "reject" |
+| Undo agent work | Overleaf history | `olf undo <task>`, leaves your own edits alone |
+| Visual lock in the editor | none | optional Chrome/Edge extension ([extension/](extension/)) |
+
+The rest of this README is olcli's documentation, which applies unchanged. Use `olf` wherever it says `olcli`.
+
+---
+
+# olcli: Overleaf CLI
 
 [![CI](https://github.com/aloth/olcli/actions/workflows/ci.yml/badge.svg)](https://github.com/aloth/olcli/actions/workflows/ci.yml)
 [![npm version](https://img.shields.io/npm/v/@aloth/olcli.svg)](https://www.npmjs.com/package/@aloth/olcli)

@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "olf: agent claims for Overleaf",
+  "version": "0.1.0",
+  "description": "Shows which sections an olf agent is editing in Overleaf, and asks before you type in them. Optional: olf works without it.",
+  "host_permissions": ["http://127.0.0.1:47321/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [
+    {
+      "matches": ["https://www.overleaf.com/project/*", "https://overleaf.com/project/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
