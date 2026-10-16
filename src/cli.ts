@@ -67,6 +67,7 @@ import {
 import { promptHidden, PromptCancelled, NotATerminal } from './prompt.js';
 import { refreshSessionFromBrowser } from './login.js';
 import { registerOlfCommands } from './olf-commands.js';
+import { LivePusher, saveBase, type PushResult } from './live/push.js';
 
 const program = new Command();
 
@@ -1232,6 +1233,7 @@ program
             mkdirSync(fileDir, { recursive: true });
           }
           writeFileSync(filePath, entry.getData());
+          saveBase(targetDir, entry.entryName, entry.getData());
           fileCount++;
         }
       }
@@ -1466,10 +1468,24 @@ program
       let failed = 0;
       let folderNotFoundCount = 0;
 
+      // olf: text docs go up as live, merged edits; other files upload as before.
+      const pusher = await LivePusher.open(client, projectId!, targetDir);
+      const liveNotes: string[] = [];
       for (const file of filesToUpload) {
         try {
           const content = readFileSync(file.path);
-          await client.uploadFile(projectId!, rootFolderId || null, file.relativePath, content, folderTree);
+          const live: PushResult = pusher ? await pusher.push(file.relativePath, content) : { status: 'not-doc' };
+          if (live.status === 'skipped') {
+            liveNotes.push(`${file.relativePath}: skipped, ${live.reason}`);
+            continue;
+          }
+          if (live.status === 'merged' && live.remoteChanged) {
+            writeFileSync(file.path, live.merged);
+            liveNotes.push(`${file.relativePath}: merged with remote changes made since your pull (local file updated)`);
+          }
+          if (live.status === 'not-doc') {
+            await client.uploadFile(projectId!, rootFolderId || null, file.relativePath, content, folderTree);
+          }
           uploaded++;
           spinner.text = `Uploading... (${uploaded}/${filesToUpload.length})`;
         } catch (error: any) {
@@ -1480,6 +1496,9 @@ program
           }
         }
       }
+
+      await pusher?.close();
+      for (const note of liveNotes) console.log(chalk.dim(`\n  ${note}`));
 
       // Deletions run after uploads: a rename arrives as add+remove, and doing
       // it in this order never leaves the remote without the file.
@@ -1727,6 +1746,7 @@ program
         } else {
           // Write remote version
           writeFileSync(filePath, remoteContent);
+          saveBase(targetDir, path, remoteContent);
           filesUpdatedLocally.push(path);
         }
       }
@@ -1745,8 +1765,19 @@ program
       // Upload local changes
       if (filesToUpload.length > 0 && !options.dryRun) {
         spinner.text = `Uploading ${filesToUpload.length} local change(s)...`;
-        for (const file of filesToUpload) {
-          await client.uploadFile(projectId, null, file.path, file.content);
+        const pusher = await LivePusher.open(client, projectId, targetDir);
+        try {
+          for (const file of filesToUpload) {
+            const live: PushResult = pusher ? await pusher.push(file.path, file.content) : { status: 'not-doc' };
+            if (live.status === 'not-doc') await client.uploadFile(projectId, null, file.path, file.content);
+            else if (live.status === 'skipped') console.log(chalk.yellow(`\n  ${file.path}: skipped, ${live.reason}`));
+            else if (live.status === 'merged' && live.remoteChanged) {
+              const localPath = resolveWithin(targetDir, file.path);
+              if (localPath) writeFileSync(localPath, live.merged);
+            }
+          }
+        } finally {
+          await pusher?.close();
         }
       }
 

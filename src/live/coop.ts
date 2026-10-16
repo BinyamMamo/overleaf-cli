@@ -93,12 +93,19 @@ export class Coop extends EventEmitter {
     live.on('event', (name: string, args: any[]) => this.onSocketEvent(name, args));
   }
 
-  static async open(client: OverleafClient, projectId: string, options: { verbose?: boolean } = {}): Promise<Coop> {
+  /**
+   * `owner: false` is for short-lived commands (undo from the terminal) that
+   * must not touch claims held by a running agent.
+   */
+  static async open(client: OverleafClient, projectId: string, options: { verbose?: boolean; owner?: boolean } = {}): Promise<Coop> {
     const live = await LiveProject.open(client, projectId, options);
     const coop = new Coop(client, live);
+    coop.owner = options.owner !== false;
     await coop.loadState();
     return coop;
   }
+
+  private owner = true;
 
   get projectId(): string {
     return this.live.projectId;
@@ -117,6 +124,7 @@ export class Coop extends EventEmitter {
     }
     this.mode = state.mode || 'direct';
     for (const s of state.suggestions || []) this.suggestions.set(s.id, s);
+    if (!this.owner) return;
     // Claims do not survive a restart: the agent lost its place. Close them
     // so nobody keeps waiting on a section nobody is editing.
     for (const thread of state.claimThreads || []) {
@@ -127,6 +135,7 @@ export class Coop extends EventEmitter {
   }
 
   private saveState(): void {
+    if (!this.owner) return;
     const state: PersistedState = {
       mode: this.mode,
       claimThreads: [...this.claims.values()].map(c => ({ id: c.id, docId: this.claimDocs.get(c.id)!.id })),
