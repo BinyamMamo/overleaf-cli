@@ -38,6 +38,7 @@ import {
   getPasswordCredentials,
 } from './config.js';
 import { refreshSessionFromBrowser } from './login.js';
+import { registerLiveTools, closeAllCoops } from './live/mcp-tools.js';
 
 // ---------------------------------------------------------------------------
 // Auth helpers
@@ -716,11 +717,22 @@ server.tool(
 // Start
 // ---------------------------------------------------------------------------
 
+// olf: live, cooperative editing tools
+registerLiveTools(server, getClient, wrapTool);
+
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
   // Log to stderr so it doesn't pollute the MCP stdio channel
-  process.stderr.write('olcli MCP server started (stdio)\n');
+  process.stderr.write('olf MCP server started (stdio)\n');
+  // Release claims so nobody waits on a section the agent left.
+  const shutdown = () => {
+    void closeAllCoops().finally(() => process.exit(0));
+    setTimeout(() => process.exit(0), 8000).unref();
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
+  process.stdin.on('end', shutdown);
 }
 
 main().catch((err) => {
