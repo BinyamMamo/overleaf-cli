@@ -65,11 +65,13 @@ import {
   type PasswordCredentials
 } from './config.js';
 import { promptHidden, PromptCancelled, NotATerminal } from './prompt.js';
+import { refreshSessionFromBrowser } from './login.js';
+import { registerOlfCommands } from './olf-commands.js';
 
 const program = new Command();
 
 program
-  .name('olcli')
+  .name('olf')
   .description('Overleaf CLI - interact with Overleaf projects from the command line')
   .version(VERSION)
   .option('--base-url <url>', 'Overleaf instance base URL (overrides OVERLEAF_BASE_URL and config)')
@@ -94,6 +96,9 @@ async function getClient(cookieOpt?: string, baseUrlOpt?: string): Promise<Overl
       client.setGlobalTimeout(timeout);
       return client;
     } catch (error) {
+      // olf: a saved browser profile can usually hand over a fresh cookie.
+      const refreshed = cookieOpt ? null : await refreshSessionFromBrowser({ baseUrl, cookieName });
+      if (refreshed) return configureClient(refreshed);
       if (!passwordCredentials) throw error;
     }
   }
@@ -103,11 +108,18 @@ async function getClient(cookieOpt?: string, baseUrlOpt?: string): Promise<Overl
   }
 
   console.error(chalk.red('No session cookie or password credentials found.'));
+  console.error('Sign in with: olf login');
   console.error('Set one with: olcli auth --cookie <session_cookie>');
   console.error('Or use: olcli auth --email <email> --password <password>');
   console.error('Or set OVERLEAF_SESSION environment variable');
   console.error('Or create .olauth file in current directory');
   process.exit(1);
+}
+
+function configureClient(client: OverleafClient): OverleafClient {
+  if (program.opts().verbose) client.setVerbose(true);
+  client.setGlobalTimeout((program.opts().timeout as number | undefined) || getTimeout());
+  return client;
 }
 
 async function loginWithSavedPassword(
@@ -2419,5 +2431,7 @@ program
       console.log(chalk.dim(`  .olauth present: ${stored.olAuthPath}`));
     }
   });
+
+registerOlfCommands(program, () => getClient());
 
 program.parse(process.argv);

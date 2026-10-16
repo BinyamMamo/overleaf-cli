@@ -1,7 +1,7 @@
 {
-  "name": "@aloth/olcli",
-  "version": "0.14.0",
-  "description": "Command-line interface for Overleaf — Sync, manage, and compile LaTeX projects from your terminal",
+  "name": "@binyammamo/overleaf-cli",
+  "version": "0.14.0-olf.0",
+  "description": "overleaf-cli (olf): olcli fork with browser login and live, cooperative editing between you and an AI agent on Overleaf",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -13,9 +13,10 @@
     "./cli": "./dist/cli.js"
   },
   "bin": {
-    "olcli": "dist/cli.js",
-    "olcli-mcp": "dist/mcp.js",
-    "git-remote-overleaf": "dist/remote-helper.js"
+    "olf": "dist/cli.js",
+    "overleaf-cli": "dist/cli.js",
+    "olf-mcp": "dist/mcp.js",
+    "git-remote-olf": "dist/remote-helper.js"
   },
   "scripts": {
     "build": "tsc",
@@ -50,12 +51,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aloth/olcli.git"
+    "url": "git+https://github.com/BinyamMamo/overleaf-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/aloth/olcli/issues"
+    "url": "https://github.com/BinyamMamo/overleaf-cli/issues"
   },
-  "homepage": "https://github.com/aloth/olcli#readme",
+  "homepage": "https://github.com/BinyamMamo/overleaf-cli#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "adm-zip": "^0.5.16",
@@ -66,6 +67,7 @@
     "diff": "^9.0.0",
     "ignore": "^7.0.5",
     "ora": "^8.0.1",
+    "playwright-core": "^1.64.1",
     "tough-cookie": "^4.1.4",
     "zod": "^4.4.3"
   },
@@ -86,5 +88,6 @@
     "dist",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "private": true
 }

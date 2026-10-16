@@ -23,7 +23,7 @@ export interface PasswordCredentials {
 }
 
 const config = new Conf<OlcliConfig>({
-  projectName: 'olcli',
+  projectName: 'olf',
   schema: {
     sessionCookie: { type: 'string' },
     csrf: { type: 'string' },

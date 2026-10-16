@@ -37,6 +37,7 @@ import {
   setSessionCookieName,
   getPasswordCredentials,
 } from './config.js';
+import { refreshSessionFromBrowser } from './login.js';
 
 // ---------------------------------------------------------------------------
 // Auth helpers
@@ -87,6 +88,12 @@ async function getClient(): Promise<OverleafClient> {
     const cookie = resolveSessionCookie();
     _client = await OverleafClient.fromSessionCookie(cookie, baseUrl, cookieName);
   } catch (error) {
+    // olf: try a fresh cookie from the saved browser profile first.
+    const refreshed = await refreshSessionFromBrowser({ baseUrl, cookieName });
+    if (refreshed) {
+      _client = refreshed;
+      return _client;
+    }
     const credentials = getPasswordCredentials();
     if (!credentials) throw error;
 
@@ -107,7 +114,7 @@ async function getClient(): Promise<OverleafClient> {
 
 const server = new McpServer(
   {
-    name: 'olcli',
+    name: 'olf',
     version: '0.8.0',
   },
   {

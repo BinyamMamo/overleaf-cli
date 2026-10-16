@@ -203,6 +203,20 @@ export class OverleafClient {
     this.timeoutMs = ms;
   }
 
+  /**
+   * olf: what the live collaboration socket needs to run its own long poll.
+   * Cookie updates it receives are folded back into this client.
+   */
+  liveAuth(): { baseUrl: string; userAgent: string; csrf: string; cookieHeader: () => string; absorbSetCookie: (headers?: string[]) => void } {
+    return {
+      baseUrl: this.baseUrl,
+      userAgent: USER_AGENT,
+      csrf: this.csrf,
+      cookieHeader: () => this.getCookieHeader(),
+      absorbSetCookie: headers => this.applySetCookieHeaders(headers)
+    };
+  }
+
   getCookie(name: string): string | undefined {
     return this.cookies[name];
   }
@@ -2358,6 +2372,21 @@ export class OverleafClient {
     } finally {
       await this.closeProjectSocket(session);
     }
+  }
+
+  /** olf: resolve, reopen or delete a thread when the doc id is already known. */
+  async threadAction(projectId: string, docId: string, threadId: string, action: 'resolve' | 'reopen' | 'delete'): Promise<void> {
+    const base = `${this.baseUrl}/project/${projectId}/doc/${docId}/thread/${threadId}`;
+    const response = await this.httpRequest(action === 'delete' ? base : `${base}/${action}`, {
+      method: action === 'delete' ? 'DELETE' : 'POST',
+      headers: this.getHeaders(true),
+      body: '',
+      expect: 'text'
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to ${action} comment thread: ${response.status}`);
+    }
+    this.applySetCookieHeaders(response.headers['set-cookie'] as string[] | undefined);
   }
 
   async postCommentMessage(projectId: string, threadId: string, content: string): Promise<CommentMessage | null> {
