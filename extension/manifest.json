@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "olf: agent claims for Overleaf",
+  "name": "olf for Overleaf",
   "version": "0.2.0",
   "description": "Shows which sections an olf agent is editing in Overleaf, and asks before you type in them. Optional: olf works without it.",
   "host_permissions": [
@@ -29,6 +29,16 @@
   ],
   "action": {
     "default_title": "olf for Overleaf",
-    "default_popup": "popup.html"
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
   }
 }

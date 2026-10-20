@@ -1,3 +1,10 @@
+<p align="left">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/olf-lockup-dark.svg">
+    <img src="docs/assets/logo/olf-lockup-light.svg" alt="overleaf-cli (olf)" height="72">
+  </picture>
+</p>
+
 # overleaf-cli (olf)
 
 **Write your paper on Overleaf together with an AI agent.** The agent edits the live project next to you, the way a co-author would. It claims a section before it works on it, and it stops the moment you start typing there. Nothing you write gets overwritten.
