@@ -12,6 +12,7 @@ import type { OverleafClient } from '../client.js';
 import { Coop } from './coop.js';
 import { listTasks } from './tasklog.js';
 import { startBridge } from './bridge.js';
+import { openProjectBrowser } from '../browser.js';
 
 type Wrap = <T>(fn: () => Promise<T>) => Promise<{ content: Array<{ type: 'text'; text: string }> }>;
 
@@ -73,6 +74,17 @@ export function registerLiveTools(server: McpServer, getClient: () => Promise<Ov
           .map((u: any) => ({ name: [u.first_name, u.last_name].filter(Boolean).join(' '), email: u.email })),
         claims: await coop.status(),
       };
+    })
+  );
+
+  server.tool(
+    'open_in_browser',
+    'Open the project in the olf browser window (Chrome, signed in, with the olf extension loaded) so the person can watch and co-edit. If they are not signed in, the window shows the Overleaf login and this waits up to wait_seconds for them. Use it when the person asks to see the project or has no Overleaf tab open.',
+    { project, wait_seconds: z.number().int().min(0).max(600).optional().default(180) },
+    async ({ project: p, wait_seconds }) => wrapTool(async () => {
+      const client = await getClient();
+      const projectId = await resolveProjectId(client, p);
+      return openProjectBrowser({ projectId, loginWaitMs: wait_seconds * 1000 });
     })
   );
 

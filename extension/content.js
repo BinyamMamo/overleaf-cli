@@ -117,6 +117,11 @@
       ? `The agent stopped working on "${here.section}" while you edit.`
       : `The agent is working on "${here.section}": ${here.task}`;
     banner.appendChild(text);
+    const meta = document.createElement('div');
+    meta.className = 'olf-banner-meta';
+    const edits = here.edits === 1 ? '1 edit so far' : `${here.edits || 0} edits so far`;
+    meta.textContent = `${here.mode === 'suggest' ? 'Suggest mode: changes arrive as comments' : 'Direct mode: edits appear live'}, ${edits}`;
+    banner.appendChild(meta);
     if (here.state === 'paused') {
       const done = document.createElement('button');
       done.textContent = 'Done, let it continue';

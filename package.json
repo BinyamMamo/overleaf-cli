@@ -86,7 +86,9 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "extension",
+    "docs"
   ],
   "private": true
 }

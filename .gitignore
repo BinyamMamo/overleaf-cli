@@ -33,3 +33,5 @@ npm-debug.log*
 .claude/
 .env*
 .olf/
+extension/pairing.json
+.notes/

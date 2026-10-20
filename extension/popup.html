@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { font: 13px/1.45 system-ui, sans-serif; color: #2b2116; background: #fffaf2; margin: 0; padding: 14px; width: 290px; }
+  h1 { font-size: 14px; margin: 0 0 8px; }
+  p { margin: 0 0 10px; }
+  .state { padding: 6px 8px; border: 1px solid #d9b77a; border-radius: 3px; background: #fbf3e4; margin-bottom: 10px; }
+  input { width: 100%; box-sizing: border-box; font: 12px ui-monospace, monospace; padding: 5px; border: 1px solid #b9a27a; border-radius: 3px; }
+  button { margin-top: 6px; font: inherit; padding: 4px 10px; border: 1px solid #a8670a; background: #a8670a; color: #fff; border-radius: 3px; cursor: pointer; }
+  code { font-size: 12px; }
+</style>
+</head>
+<body>
+  <h1>olf for Overleaf</h1>
+  <div class="state" id="state">Checking...</div>
+  <p>To pair by hand, run <code>olf extension pair</code> and paste the code here.</p>
+  <input id="token" placeholder="pairing code" autocomplete="off">
+  <button id="save">Pair</button>
+  <script src="popup.js"></script>
+</body>
+</html>

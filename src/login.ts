@@ -73,7 +73,7 @@ export function hasBrowserProfile(profile = getActiveProfile()): boolean {
  * Find a browser to drive. Playwright's bundled browsers are not required:
  * an installed Chrome, Edge or Chromium works, and OLF_BROWSER overrides.
  */
-function resolveExecutable(): string | undefined {
+export function findBrowserExecutable(): string | undefined {
   const candidates = [
     process.env.OLF_BROWSER,
     '/usr/bin/google-chrome',
@@ -117,7 +117,7 @@ export async function browserLogin(options: BrowserLoginOptions = {}): Promise<B
     throw new Error('Browser login needs playwright-core. Run: npm install playwright-core');
   }
 
-  const executablePath = resolveExecutable();
+  const executablePath = findBrowserExecutable();
   if (!executablePath) {
     throw new Error('No Chrome, Edge or Chromium found. Install one, or set OLF_BROWSER to its path.');
   }
