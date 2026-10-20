@@ -52,3 +52,6 @@ Nothing leaves your computer. Permissions: `storage` (the pairing code) and
 It reads Overleaf's own page (line numbers, the active line, the file tree and
 outline). If Overleaf changes that markup, the in-editor drawing stops until it
 is updated; the side panel and olf itself keep working.
+
+olf is not affiliated with or endorsed by Overleaf. The icon adapts the
+Overleaf mark; Overleaf is a trademark of its owner.

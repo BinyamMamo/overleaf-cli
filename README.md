@@ -305,3 +305,5 @@ olf's own code lives in separate files (`src/live/`, `src/login.ts`, `src/snapsh
 ## Credits and license
 
 olf is built on [olcli](https://github.com/aloth/olcli) by Alexander Loth, which did the hard work of talking to Overleaf without an API. MIT licensed, like olcli.
+
+olf is an independent project and is not affiliated with or endorsed by Overleaf. Its icon adapts the Overleaf mark (with a text cursor added) to show what the tool works with; Overleaf is a trademark of its owner.

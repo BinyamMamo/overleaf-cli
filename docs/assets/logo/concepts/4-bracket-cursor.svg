@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="t"><title id="t">olf: braces and cursor</title>
-<rect width="128" height="128" rx="22" fill="#2b2116"/>
-<path d="M48 26c-12 0-14 6-14 16v12c0 6-3 10-10 10 7 0 10 4 10 10v12c0 10 2 16 14 16" fill="none" stroke="#fbf3e4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M80 26c12 0 14 6 14 16v12c0 6 3 10 10 10-7 0-10 4-10 10v12c0 10-2 16-14 16" fill="none" stroke="#fbf3e4" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
-<rect x="59.5" y="38" width="9" height="52" rx="2" fill="#c98316"/>
-</svg>

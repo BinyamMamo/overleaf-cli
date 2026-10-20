@@ -53,11 +53,7 @@ button {
 }
 
 .top { padding: 12px 14px 8px; border-bottom: 1px solid var(--rule); }
-.brand { display: flex; align-items: center; gap: 7px; }
-.brand-name { font-weight: 700; letter-spacing: 0.02em; }
-.project { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.project::before { content: "/ "; }
-.project:empty::before { content: ""; }
+.project { margin: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
 .status strong { color: var(--ink); font-weight: 600; }
 
@@ -155,3 +151,12 @@ main { flex: 1; padding: 4px 14px 14px; }
 .foot { padding: 8px 14px 12px; color: var(--muted); font-size: 11px; border-top: 1px solid var(--rule); }
 
 .tabs[hidden] { display: none; }
+
+/* Not connected, not paired, no project: one line and one action, centred. */
+.center { min-height: 55vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px; }
+.center p { margin: 0; color: var(--muted); max-width: 260px; }
+.center .lead { color: var(--ink); }
+.center .btn { padding: 6px 22px; }
+.center input { width: 220px; font: 12px ui-monospace, monospace; padding: 6px; border: 1px solid var(--rule); border-radius: 3px; background: var(--paper); color: var(--ink); text-align: center; }
+.tabs.off button { color: var(--muted); }
+.tabs.off button.active { color: var(--muted); border-bottom-color: var(--rule); font-weight: 400; }

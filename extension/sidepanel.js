@@ -157,32 +157,32 @@ function setStatus(parts) {
   $('status').replaceChildren(...parts.map(p => typeof p === 'string' ? document.createTextNode(p) : p));
 }
 
+// One centred line and one action, for every "not working yet" state.
+function renderCenter(lead, action, hint) {
+  $('tabs').classList.add('off');
+  $('count-now').textContent = '';
+  $('count-review').textContent = '';
+  $('status').textContent = '';
+  main.replaceChildren(el('div', { class: 'center' }, el('p', { class: 'lead' }, lead), action, hint ? el('p', {}, hint) : null));
+}
+
 function renderUnpaired(reason) {
-  $('tabs').hidden = true;
-  setStatus([reason === 'bad-token' ? 'The pairing code was replaced.' : 'Not paired with olf yet.']);
-  const input = el('input', { placeholder: 'pairing code', autocomplete: 'off' });
-  main.replaceChildren(el('div', { class: 'empty pair' },
-    el('p', {}, 'Run this in a terminal and paste the code:'),
-    el('p', {}, el('code', {}, 'olf extension pair')),
-    input,
-    el('button', { class: 'btn primary', onclick: async () => { await send({ type: 'set-token', token: input.value }); refresh(); } }, 'Pair'),
-    el('p', { class: 'row-meta' }, 'Tip: "olf browser" and "olf extension install" pair it for you.')));
+  const input = el('input', { placeholder: 'pairing code', autocomplete: 'off', 'aria-label': 'Pairing code' });
+  const connect = el('button', { class: 'btn primary', onclick: async () => { await send({ type: 'set-token', token: input.value }); state.tried = true; refresh(); } }, 'Connect');
+  renderCenter(reason === 'bad-token' ? 'The pairing code changed.' : 'Not paired with olf.', el('div', { class: 'center-actions' }, input, el('div', { style: 'margin-top:8px' }, connect)), el('span', {}, 'Get a code with ', el('code', {}, 'olf extension pair')));
+}
+
+function renderDisconnected() {
+  const connect = el('button', { class: 'btn primary', onclick: () => { state.tried = true; connect.disabled = true; connect.textContent = 'Connecting...'; refresh(); } }, 'Connect');
+  renderCenter('No agent is working on this project.', connect, state.tried ? 'Start your AI client with olf, then try again.' : null);
 }
 
 function render() {
   const d = state.data;
   if (!d) return;
-  if (!d.live) {
-    $('tabs').hidden = true;
-    $('project-name').textContent = '';
-    setStatus(['No agent is working on this project.']);
-    main.replaceChildren(el('div', { class: 'empty' },
-      el('p', {}, 'Start your AI client with olf and ask it to work on this project. This panel fills in as soon as it connects.'),
-      d.projects?.length ? el('p', {}, `The agent is connected to: ${d.projects.map(p => p.name).join(', ')}.`) : null,
-      el('p', {}, 'Not set up yet? Run ', el('code', {}, 'olf doctor'), '.')));
-    return;
-  }
-  $('tabs').hidden = false;
+  if (!d.live) return renderDisconnected();
+  state.tried = false;
+  $('tabs').classList.remove('off');
   $('project-name').textContent = d.project.name;
   const editing = d.claims.filter(c => c.state !== 'paused').length;
   const paused = d.claims.length - editing;
@@ -209,16 +209,16 @@ async function refresh() {
     state.tabId = current?.tabId ?? null;
   }
   if (!state.project) {
-    $('tabs').hidden = true;
-    $('project-name').textContent = '';
-    setStatus(['Open an Overleaf project in this tab.']);
-    main.replaceChildren(el('div', { class: 'empty' }, el('p', {}, 'This panel follows the Overleaf project in the active tab.')));
-    return;
+    $('project-name').textContent = 'Overleaf project';
+    return renderCenter('Open an Overleaf project in this tab.', null, null);
   }
   const reply = await send({ type: 'panel', project: state.project });
   if (!reply?.ok) {
+    // Leave the pairing field alone while someone is typing in it.
+    if (document.activeElement?.tagName === 'INPUT') return;
     if (reply?.reason === 'not-paired' || reply?.reason === 'bad-token') return renderUnpaired(reply.reason);
     state.data = { live: false };
+    if (reply?.reason === 'no-agent' || reply?.reason === 'error') return renderDisconnected();
   } else {
     state.data = reply.data;
   }
