@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 880 360" role="img" aria-labelledby="t d">
+<title id="t">How olf works</title>
+<desc id="d">You type in the Overleaf editor. Overleaf merges every edit. olf-mcp joins the same live connection and edits for the AI agent. The browser extension and side panel talk to olf-mcp on your computer. olf-mcp saves Git snapshots.</desc>
+<defs>
+  <marker id="hw-arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#a8670a"/></marker>
+  <style>
+    .box { fill: #fbf8f1; stroke: #d9c9ad; stroke-width: 1.5; }
+    .hub { fill: #f6ead3; stroke: #a8670a; stroke-width: 1.5; }
+    .title { font: 600 16px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #2b2116; }
+    .sub { font: 13px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #75664f; }
+    .label { font: 12px -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif; fill: #8a5608; }
+    .line { stroke: #a8670a; stroke-width: 1.6; fill: none; }
+    .dash { stroke: #b9a68a; stroke-width: 1.4; fill: none; stroke-dasharray: 5 4; }
+  </style>
+</defs>
+<rect width="880" height="360" rx="8" fill="#fffdf8"/>
+
+<rect class="box" x="24" y="40" width="200" height="86" rx="5"/>
+<text class="title" x="44" y="74">You</text>
+<text class="sub" x="44" y="98">typing in the Overleaf editor,</text>
+<text class="sub" x="44" y="115">watching the PDF</text>
+
+<rect class="box" x="340" y="40" width="200" height="86" rx="5"/>
+<text class="title" x="360" y="74">Overleaf</text>
+<text class="sub" x="360" y="98">merges every edit live,</text>
+<text class="sub" x="360" y="115">compiles the PDF</text>
+
+<rect class="hub" x="340" y="214" width="200" height="86" rx="5"/>
+<text class="title" x="360" y="248">olf-mcp</text>
+<text class="sub" x="360" y="272">claims, live edits, pauses,</text>
+<text class="sub" x="360" y="289">suggestions, compile check</text>
+
+<rect class="box" x="656" y="214" width="200" height="86" rx="5"/>
+<text class="title" x="676" y="248">AI agent</text>
+<text class="sub" x="676" y="272">Claude Code, Codex,</text>
+<text class="sub" x="676" y="289">Cursor, Windsurf</text>
+
+<rect class="box" x="24" y="214" width="200" height="86" rx="5"/>
+<text class="title" x="44" y="248">Extension + panel</text>
+<text class="sub" x="44" y="272">optional: shows claims,</text>
+<text class="sub" x="44" y="289">review, history, snapshots</text>
+
+<rect class="box" x="656" y="40" width="200" height="86" rx="5"/>
+<text class="title" x="676" y="74">Git snapshots</text>
+<text class="sub" x="676" y="98">one repository per project,</text>
+<text class="sub" x="676" y="115">optional GitHub backup</text>
+
+<path class="line" d="M224 83H340" marker-start="url(#hw-arrow)" marker-end="url(#hw-arrow)"/>
+<text class="label" x="246" y="74">live edits</text>
+
+<path class="line" d="M440 126V214" marker-start="url(#hw-arrow)" marker-end="url(#hw-arrow)"/>
+<text class="label" x="450" y="166">same live connection</text>
+<text class="label" x="450" y="182">as the editor</text>
+
+<path class="line" d="M540 257H656" marker-start="url(#hw-arrow)" marker-end="url(#hw-arrow)"/>
+<text class="label" x="566" y="248">MCP tools</text>
+
+<path class="dash" d="M224 257H340"/>
+<text class="label" x="236" y="248">127.0.0.1, paired</text>
+
+<path class="line" d="M540 230C600 230 610 110 656 100" marker-end="url(#hw-arrow)"/>
+<text class="label" x="548" y="140">after each task</text>
+
+<path class="dash" d="M124 126V214"/>
+<text class="label" x="134" y="174">runs inside your browser</text>
+
+<text class="sub" x="24" y="336">Nothing goes anywhere except Overleaf and, if you set it up, your own GitHub backup.</text>
+</svg>

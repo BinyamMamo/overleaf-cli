@@ -1,23 +1,58 @@
-<p align="left">
+<p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/olf-lockup-dark.svg">
-    <img src="docs/assets/logo/olf-lockup-light.svg" alt="overleaf-cli (olf)" height="72">
+    <img src="docs/assets/logo/olf-lockup-light.svg" alt="overleaf-cli (olf)" height="84">
   </picture>
 </p>
 
-# overleaf-cli (olf)
+<p align="center"><b>Write your paper on Overleaf together with an AI agent.</b><br>It edits live next to you, claims a section first, and steps back the moment you type there.</p>
 
-**Write your paper on Overleaf together with an AI agent.** The agent edits the live project next to you, the way a co-author would. It claims a section before it works on it, and it stops the moment you start typing there. Nothing you write gets overwritten.
+<p align="center">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-a8670a" alt="License: MIT"></a>
+  <img src="https://img.shields.io/badge/node-%E2%89%A520.18-2b2116?logo=nodedotjs&logoColor=white" alt="Node 20.18 or newer">
+  <a href="docs/MCP.md"><img src="https://img.shields.io/badge/MCP-server-2b2116?logo=modelcontextprotocol&logoColor=white" alt="MCP server"></a>
+  <img src="https://img.shields.io/badge/Overleaf-live%20editing-a8670a?logo=overleaf&logoColor=white" alt="Overleaf live editing">
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest"><img src="https://img.shields.io/github/v/release/BinyamMamo/overleaf-cli?label=extension&color=a8670a" alt="Latest extension release"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/stargazers"><img src="https://img.shields.io/github/stars/BinyamMamo/overleaf-cli?style=flat&color=2b2116" alt="GitHub stars"></a>
+</p>
 
-olf works with Claude Code, Codex, Cursor, Claude Desktop and Windsurf (any client that speaks MCP). It is a fork of [olcli](https://github.com/aloth/olcli) and keeps all of its commands.
+<p align="center">
+  <img src="https://img.shields.io/badge/Claude%20Code-works-2b2116?logo=claude&logoColor=white" alt="Works with Claude Code">
+  <img src="https://img.shields.io/badge/Codex-works-2b2116" alt="Works with Codex">
+  <img src="https://img.shields.io/badge/Cursor-works-2b2116?logo=cursor&logoColor=white" alt="Works with Cursor">
+  <img src="https://img.shields.io/badge/Windsurf-works-2b2116?logo=windsurf&logoColor=white" alt="Works with Windsurf">
+  <img src="https://img.shields.io/badge/Claude%20Desktop-works-2b2116?logo=anthropic&logoColor=white" alt="Works with Claude Desktop">
+</p>
+
+<p align="center">
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-chrome.svg" alt="Download the extension for Chrome" height="44"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-edge.svg" alt="Download the extension for Edge" height="44"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-brave.svg" alt="Download the extension for Brave" height="44"></a>
+  <img src="docs/assets/button-firefox.svg" alt="Firefox: not supported yet" height="44">
+  <img src="docs/assets/button-safari.svg" alt="Safari: not supported yet" height="44">
+</p>
+<p align="center"><sub>The browser extension is optional. <a href="#install-the-extension">How to install it</a></sub></p>
 
 <p align="center">
   <img src="docs/assets/demo.gif" alt="The agent claims the Results section and rewrites it live. The person clicks into the section, chooses Edit anyway, types a sentence, and presses Done; the agent then continues." width="820">
 </p>
 
-<p align="center"><sub>Real recording on overleaf.com: the agent rewrites "Results" live, you step in, it pauses, you press Done, it continues.</sub></p>
+olf (overleaf-cli) works with any AI client that speaks MCP. It is a fork of [olcli](https://github.com/aloth/olcli) and keeps all of its commands, adding live co-editing, Git snapshots, a browser side panel and a one-command setup.
 
-**Contents:** [Quick start](#quick-start) · [How a session works](#how-a-session-works) · [Git snapshots](#git-snapshots) · [For AI agents](#for-ai-agents) · [Browser extension](#browser-extension-optional) · [Commands](#commands) · [Push and sync](#push-and-sync) · [Safety](#safety-and-limits) · [olcli reference](docs/OLCLI.md)
+## Contents
+
+- [Quick start](#quick-start)
+- [How a session works](#how-a-session-works)
+- [The side panel and extension](#the-side-panel-and-extension)
+  - [Install the extension](#install-the-extension)
+- [How it works](#how-it-works)
+- [Git snapshots](#git-snapshots)
+- [For AI agents](#for-ai-agents)
+- [Commands](#commands)
+- [Push and sync](#push-and-sync)
+- [Safety and limits](#safety-and-limits)
+- [Staying up to date with olcli](#staying-up-to-date-with-olcli)
+- [olcli reference](docs/OLCLI.md)
 
 ---
 
@@ -78,25 +113,79 @@ Open your project in Overleaf (or let the agent open it with `olf browser "My Pa
 
 ## How a session works
 
-| | |
-|---|---|
-| <img src="docs/assets/agent-editing.png" alt="The Results section is tinted, tagged Agent editing, and a note at the bottom says what the agent is doing" width="420"> | **1. The agent claims a section.** The section gets an Overleaf comment that says what the agent is doing, and the agent's cursor shows where it is editing. With the extension you also see a tinted band and a short status note. |
-| <img src="docs/assets/edit-anyway-dialog.png" alt="A dialog asks: The agent is editing Results. Wait or Edit anyway" width="420"> | **2. You can still step in.** If you type in the claimed section, olf pauses the agent at once and its further edits are refused. With the extension, you are first asked *Wait* or *Edit anyway*. |
-| <img src="docs/assets/paused.png" alt="The band is grey and tagged Agent paused; the note offers Done, let it continue" width="420"> | **3. You hand it back.** Reply **done** in the agent's comment, or press **Done, let it continue** in the extension. The agent reads the section again before it continues. |
+| 1. The agent claims a section | 2. You can still step in | 3. You hand it back |
+|---|---|---|
+| <img src="docs/assets/agent-editing.png" alt="The Results section is tinted and tagged Agent editing; a note says what the agent is doing" width="280"> | <img src="docs/assets/edit-anyway-dialog.png" alt="A dialog asks: The agent is editing Results. Wait or Edit anyway" width="280"> | <img src="docs/assets/paused.png" alt="The section is grey and tagged Agent paused; the note offers Done, let it continue" width="280"> |
+| The section gets an Overleaf comment saying what the agent is doing, and its cursor shows where it edits. With the extension, the section is tinted and a note shows the task. | Typing in the claimed section pauses the agent at once; its next edits are refused. With the extension you are first asked *Wait* or *Edit anyway*. | Reply **done** in the agent's comment, or press **Done, let it continue**. The agent reads the section again before it goes on. |
 
-When the agent finishes, it compiles the project. If LaTeX reports errors, the agent keeps the section and fixes them first. Then it releases the section with a short summary in the comment.
+When the agent finishes, it compiles the project. If LaTeX reports errors, it keeps the section and fixes them first. Then it releases the section with a short summary, and olf saves a [Git snapshot](#git-snapshots).
 
 **Your controls**
 
 | You want to | Do this |
 |---|---|
-| Pause the agent in a section | Type in it (or *Edit anyway* in the extension) |
-| Let it continue | Reply exactly `done` in its comment, or press *Done, let it continue* |
-| Review before anything changes | Ask the agent to use suggest mode. Each change arrives as a comment; reply exactly `accept` or `reject` |
-| See what the agent changed | `olf tasks --diff` |
-| Undo one agent task | `olf undo <task-id>` (your own later edits are kept) |
+| Pause the agent in a section | Type in it, press *Pause* in the side panel, or *Edit anyway* |
+| Let it continue | Reply exactly `done` in its comment, or press *Let it continue* |
+| Review before anything changes | Ask the agent to use suggest mode. Changes wait in the panel's Review tab (or as comments) for *Accept* or *Reject* |
+| See what the agent changed | The panel's History tab, or `olf tasks --diff` |
+| Undo one agent task | *Undo* in History, or `olf undo <task-id>` (your own later edits are kept) |
+| Go back to an earlier version | The panel's Snapshots tab, or `olf snapshot restore <id>` |
 
 Replies are read as commands only when the whole reply is the command. *"do not accept this"*, *"not done yet"* or *"I will accept later"* do nothing.
+
+---
+
+## The side panel and extension
+
+olf works without the extension: the claim comment and the agent's cursor already show where the agent is working. The extension adds two things to Overleaf:
+
+- **In the editor:** the claimed section is tinted, a note says what the agent is doing, and typing inside the section first asks *Wait* or *Edit anyway*.
+- **The olf side panel:** click the olf icon in the toolbar. It follows the project in the open tab and shows what the agent is doing, waits for your decisions, and keeps the project's history.
+
+<p align="center">
+  <img src="docs/assets/panel-demo.gif" alt="The olf side panel next to the Overleaf editor. The agent edits Related Work; the panel shows it, the person presses Pause and then Let it continue. In suggest mode a change appears under Review and the person accepts it. History lists the tasks and Snapshots lists Git snapshots." width="820">
+</p>
+
+| Now | Review | History | Snapshots |
+|---|---|---|---|
+| <img src="docs/assets/panel-now.png" alt="Now tab: the claimed section, its task, Pause and Show in editor" width="190"> | <img src="docs/assets/panel-review.png" alt="Review tab: a suggested change with Accept and Reject" width="190"> | <img src="docs/assets/panel-history.png" alt="History tab: agent tasks with their changes and Undo" width="190"> | <img src="docs/assets/panel-snapshots.png" alt="Snapshots tab: save, compare and restore" width="190"> |
+| What the agent is editing. Pause it, let it continue, or jump to the section | Suggestions with a word-level diff. Accept or reject with one click | Every agent task and its changes. Undo shows first what can be reverted | Git snapshots: save one, compare it with now, restore it |
+
+### Install the extension
+
+The download buttons at the top give `olf-extension.zip` (the same file works in Chrome, Edge and Brave). There are three ways to install it:
+
+**A. Let olf open the browser (nothing to install).** One command opens Chrome with your olf sign-in, the extension already loaded and paired, and the project open. The window remembers the sign-in for next time. Your agent can do the same with the `open_in_browser` tool.
+
+```bash
+olf browser "My Paper"
+```
+
+**B. Your own browser, prepared by olf.**
+
+```bash
+olf extension install --browser edge     # or chrome, brave
+```
+
+olf copies the extension (already paired) to a folder, copies the folder path to your clipboard and opens the browser's extensions page. Then make three clicks, which browsers require for any extension outside their store:
+
+1. Turn on **Developer mode**.
+2. Click **Load unpacked**.
+3. Paste the folder path and confirm.
+
+On WSL, this installs for your Windows browser by default.
+
+**C. From the downloaded zip.** Unzip it, load the `olf-extension` folder as in B, then open the olf panel, run `olf extension pair` and paste the code it prints.
+
+The extension only talks to olf on your own computer (`127.0.0.1`), with a pairing code. See [extension/README.md](extension/README.md).
+
+---
+
+## How it works
+
+<p align="center"><img src="docs/assets/how-it-works.svg" alt="You type in the Overleaf editor; Overleaf merges every edit; olf-mcp joins the same live connection and edits for the AI agent; the extension and side panel talk to olf-mcp on your computer; olf-mcp saves Git snapshots after each task." width="820"></p>
+
+Overleaf's editor sends every keystroke as a small operation over a live connection, and the server merges operations from everyone with operational transformation. olf joins the same connection and sends its edits the same way, so the server merges them with yours. Claims, pauses and suggestions are built on Overleaf's own comment threads, which every plan has. The details are in [docs/LIVE.md](docs/LIVE.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
@@ -161,63 +250,6 @@ If you are an AI agent with olf's MCP tools, this is the workflow. (The same gui
 | `open_in_browser` | Open the project for the person, signed in, extension loaded |
 
 All olcli tools (`list_projects`, `pull_project`, `compile`, `download_pdf`, comments and more) are still there. See [docs/MCP.md](docs/MCP.md).
-
----
-
-## Browser extension (optional)
-
-olf works without the extension: the claim comment and the agent's cursor already show where the agent is working. The extension adds two things to Overleaf:
-
-- **In the editor:** the claimed section is tinted, a note says what the agent is doing, and typing inside the section first asks *Wait* or *Edit anyway*.
-- **The olf side panel:** click the olf icon in the toolbar. It follows the project in the open tab and shows what the agent is doing, waits for your decisions, and keeps the project's history.
-
-<p align="center">
-  <img src="docs/assets/panel-demo.gif" alt="The olf side panel next to the Overleaf editor. The agent edits Related Work; the panel shows it, the person presses Pause and then Let it continue. In suggest mode a change appears under Review and the person accepts it. History lists the tasks and Snapshots lists Git snapshots." width="820">
-</p>
-
-| Now | Review | History | Snapshots |
-|---|---|---|---|
-| <img src="docs/assets/panel-now.png" alt="Now tab: the claimed section, its task, Pause and Show in editor" width="190"> | <img src="docs/assets/panel-review.png" alt="Review tab: a suggested change with Accept and Reject" width="190"> | <img src="docs/assets/panel-history.png" alt="History tab: agent tasks with their changes and Undo" width="190"> | <img src="docs/assets/panel-snapshots.png" alt="Snapshots tab: save, compare and restore" width="190"> |
-| What the agent is editing. Pause it, let it continue, or jump to the section | Suggestions with a word-level diff. Accept or reject with one click | Every agent task and its changes. Undo shows first what can be reverted | Git snapshots: save one, compare it with now, restore it |
-
-**Download**
-
-<p>
-  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-chrome.svg" alt="Download for Chrome" height="44"></a>
-  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-edge.svg" alt="Download for Edge" height="44"></a>
-  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-brave.svg" alt="Download for Brave" height="44"></a>
-  <img src="docs/assets/button-firefox.svg" alt="Firefox: not supported yet" height="44">
-  <img src="docs/assets/button-safari.svg" alt="Safari: not supported yet" height="44">
-</p>
-
-The buttons download `olf-extension.zip` (the same file works in all three browsers).
-
-<a id="install-the-extension"></a>
-**Install it in one of three ways**
-
-**A. Let olf open the browser (nothing to install).** One command opens Chrome with your olf sign-in, the extension already loaded and paired, and the project open. The window remembers the sign-in for next time. Your agent can do the same with the `open_in_browser` tool.
-
-```bash
-olf browser "My Paper"
-```
-
-**B. Your own browser, prepared by olf.**
-
-```bash
-olf extension install --browser edge     # or chrome, brave
-```
-
-olf copies the extension (already paired) to a folder, copies the folder path to your clipboard and opens the browser's extensions page. Then make three clicks, which browsers require for any extension outside their store:
-
-1. Turn on **Developer mode**.
-2. Click **Load unpacked**.
-3. Paste the folder path and confirm.
-
-On WSL, this installs for your Windows browser by default.
-
-**C. From the downloaded zip.** Unzip it, load the `olf-extension` folder as in B, then open the olf panel, run `olf extension pair` and paste the code it prints.
-
-The extension only talks to olf on your own computer (`127.0.0.1`), with a pairing code. See [extension/README.md](extension/README.md).
 
 ---
 
@@ -287,10 +319,6 @@ Report security issues as described in [SECURITY.md](SECURITY.md).
 
 ---
 
-## How it works
-
-Overleaf's editor sends every keystroke as a small operation over a live connection, and the server merges operations from everyone with operational transformation. olf joins the same connection and sends its edits the same way, so the server merges them with yours. Claims, pauses and suggestions are built on Overleaf's own comment threads, which every plan has. The details are in [docs/LIVE.md](docs/LIVE.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
-
 ## Staying up to date with olcli
 
 olf is its own project, but it still follows fixes in [aloth/olcli](https://github.com/aloth/olcli). To see and take them:
@@ -302,8 +330,10 @@ git merge upstream/main                # then resolve, build and test
 
 olf's own code lives in separate files (`src/live/`, `src/login.ts`, `src/snapshot.ts` and others), so most upstream changes merge cleanly.
 
+---
+
 ## Credits and license
 
 olf is built on [olcli](https://github.com/aloth/olcli) by Alexander Loth, which did the hard work of talking to Overleaf without an API. MIT licensed, like olcli.
 
-olf is an independent project and is not affiliated with or endorsed by Overleaf. Its icon adapts the Overleaf mark (recoloured, with a small robot face for the agent) to show what the tool works with; Overleaf is a trademark of its owner.
+olf is an independent project and is not affiliated with or endorsed by Overleaf. Its icon adapts the Overleaf mark (recoloured, with a spark for the agent) to show what the tool works with; Overleaf is a trademark of its owner.
