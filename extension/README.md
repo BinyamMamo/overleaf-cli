@@ -1,29 +1,37 @@
 # olf browser extension (optional)
 
 Shows which sections an olf agent is editing in the Overleaf editor, and asks
-before you type inside one. olf works without it. The extension only adds
-these visual cues.
+before you type inside one. olf works without it: the claim comment and the
+agent's cursor already show where the agent works.
 
-## Install (Chrome or Edge)
+Supported: Chrome, Edge, Brave (Manifest V3). Not supported yet: Firefox, Safari.
 
-1. Open `chrome://extensions` (or `edge://extensions`).
-2. Turn on **Developer mode**.
-3. Click **Load unpacked** and pick this `extension` folder.
+## Install
+
+- **No install:** `olf browser "<project>"` opens Chrome with the extension
+  loaded and paired.
+- **Your own browser:** `olf extension install --browser edge` (or chrome,
+  brave). It prepares a paired copy, copies its path to the clipboard and
+  opens the extensions page. Then: turn on **Developer mode**, click
+  **Load unpacked**, paste the path.
+- **From the zip:** load the unzipped folder as above, then run
+  `olf extension pair` and paste the code into the extension's popup.
 
 ## What you see
 
-- A band down the left of each claimed section, tagged "Agent editing".
-- A short banner saying what the agent is doing.
-- If you type in a claimed section: a dialog with **Wait** and **Edit anyway**.
-  Edit anyway pauses the agent (the band turns grey). When you finish, press
-  **Done, let it continue** in the banner.
+- The claimed section is tinted and tagged "Agent editing".
+- A note says what the agent is doing, whether it edits directly or suggests,
+  and how many edits it made.
+- If you type in a claimed section: **Wait** or **Edit anyway**. Edit anyway
+  pauses the agent (the tint turns grey). When you finish, press
+  **Done, let it continue**.
 
-## How it talks to olf
+## Privacy and security
 
-It asks `olf-mcp` on `http://127.0.0.1:47321` (this machine only) for the
-claims of the open project. Nothing leaves your computer. If `olf-mcp` is not
-running, the extension shows nothing.
+The extension runs only on overleaf.com project pages. It talks only to olf on
+`http://127.0.0.1:47321`, and olf answers only requests that carry the pairing
+code (`olf extension pair --rotate` replaces it). Nothing leaves your computer.
 
 It reads Overleaf's own page (line numbers, the active line, the file tree).
 If Overleaf changes that markup, the extension stops drawing until it is
-updated. The comment, the agent's cursor and pausing still work.
+updated; olf itself keeps working.

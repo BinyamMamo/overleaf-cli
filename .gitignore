@@ -35,3 +35,4 @@ npm-debug.log*
 .olf/
 extension/pairing.json
 .notes/
+dist-extension/

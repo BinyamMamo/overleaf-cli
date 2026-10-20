@@ -23,7 +23,8 @@
     "dev": "tsx src/cli.ts",
     "lint": "eslint src/",
     "test": "tsx --test test/*.test.ts",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "pack:extension": "node scripts/pack-extension.mjs"
   },
   "keywords": [
     "overleaf",
