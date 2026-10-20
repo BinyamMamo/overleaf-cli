@@ -183,7 +183,7 @@ function render() {
   if (!d.live) return renderDisconnected();
   state.tried = false;
   $('tabs').classList.remove('off');
-  $('project-name').textContent = d.project.name;
+  setTitle(d.project.name);
   const editing = d.claims.filter(c => c.state !== 'paused').length;
   const paused = d.claims.length - editing;
   setStatus([
@@ -202,6 +202,12 @@ function render() {
   if (keepInput) { const input = document.getElementById('snap-msg'); if (input) input.value = keepInput; }
 }
 
+// The Overleaf project's name; "Overleaf project" only when no name is known.
+function setTitle(name) {
+  if (name) state.name = name;
+  $('project-name').textContent = (state.project && state.name) || 'Overleaf project';
+}
+
 async function refresh() {
   if (!params.get('project')) {
     const current = await send({ type: 'current-project' });
@@ -209,9 +215,15 @@ async function refresh() {
     state.tabId = current?.tabId ?? null;
   }
   if (!state.project) {
-    $('project-name').textContent = 'Overleaf project';
+    setTitle(null);
     return renderCenter('Open an Overleaf project in this tab.', null, null);
   }
+  if (state.project !== state.namedProject) {
+    state.namedProject = state.project;
+    state.name = null;
+  }
+  const known = await send({ type: 'project-name', project: state.project });
+  setTitle(known?.name || null);
   const reply = await send({ type: 'panel', project: state.project });
   if (!reply?.ok) {
     // Leave the pairing field alone while someone is typing in it.

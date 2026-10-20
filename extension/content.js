@@ -210,7 +210,13 @@
   }
 
   // Tell the extension which project this tab shows (for the side panel).
-  ask({ type: 'project', project: projectId });
+  // The project's name as Overleaf shows it, from the tab title
+  // ("My Paper - Online LaTeX Editor Overleaf").
+  const projectName = () => document.title.split(/ - (?:Online LaTeX Editor )?Overleaf/)[0].trim() || null;
+  ask({ type: 'project', project: projectId, name: projectName() });
+  // Overleaf sets the final title after load, and it changes on rename.
+  new MutationObserver(() => ask({ type: 'project', project: projectId, name: projectName() }))
+    .observe(document.querySelector('title') || document.head, { childList: true, characterData: true, subtree: true });
 
   // The side panel's "Show" button: open the section through Overleaf's own
   // file outline, which knows how to scroll the editor there.

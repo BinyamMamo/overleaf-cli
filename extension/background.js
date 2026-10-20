@@ -48,10 +48,23 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
     switch (message.type) {
       case 'project':
         if (sender.tab?.id != null) tabProjects.set(sender.tab.id, message.project);
+        if (message.name) {
+          // Remember names, so the panel can show one even with no tab open.
+          const { projectNames = {} } = await chrome.storage.local.get('projectNames');
+          if (projectNames[message.project] !== message.name) {
+            projectNames[message.project] = message.name;
+            await chrome.storage.local.set({ projectNames });
+          }
+        }
         return { ok: true };
       case 'current-project': {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        return { ok: true, project: tab ? tabProjects.get(tab.id) || null : null, tabId: tab?.id ?? null };
+        const project = tab ? tabProjects.get(tab.id) || null : null;
+        return { ok: true, project, tabId: tab?.id ?? null };
+      }
+      case 'project-name': {
+        const { projectNames = {} } = await chrome.storage.local.get('projectNames');
+        return { ok: true, name: projectNames[message.project] || null };
       }
       case 'open-panel':
         if (sender.tab?.id != null) await chrome.sidePanel.open({ tabId: sender.tab.id }).catch(() => {});
