@@ -20,6 +20,7 @@ import { getConfigPath } from '../config.js';
 import { LiveProject, type ChangeEvent, type LiveDoc } from './session.js';
 import { findSection, findSections, moveRange, type Range } from './sections.js';
 import { appendTaskLog, listTasks } from './tasklog.js';
+import { parseThreadCommand } from './commands.js';
 import { parseLatexErrors, type LatexProblem } from './latexlog.js';
 
 export type EditMode = 'direct' | 'suggest';
@@ -60,9 +61,6 @@ interface PersistedState {
   suggestions: (Suggestion & { docId: string })[];
 }
 
-const RESUME_WORDS = /\b(done|continue|go ahead|go on|resume|ok|okay|carry on|proceed|your turn)\b/i;
-const ACCEPT_WORDS = /\b(accept|accepted|yes|apply|approve|approved|lgtm|ok|okay)\b/i;
-const REJECT_WORDS = /\b(reject|rejected|no|decline|discard|skip)\b/i;
 
 function newThreadId(): string {
   const time = Math.floor(Date.now() / 1000).toString(16).padStart(8, '0');
@@ -177,7 +175,7 @@ export class Coop extends EventEmitter {
         };
         claim.inbox.push(msg);
         this.emit('message', claim, msg);
-        if (claim.state === 'paused' && RESUME_WORDS.test(msg.content)) this.resume(claim, `${msg.author} replied "${msg.content}"`);
+        if (claim.state === 'paused' && parseThreadCommand(msg.content, claim.id) === 'resume') this.resume(claim, `${msg.author} replied "${msg.content}"`);
       }
     } else if (name === 'resolve-thread') {
       const [threadId] = args;
@@ -224,7 +222,7 @@ export class Coop extends EventEmitter {
     claim.pausedAt = new Date().toISOString();
     this.emit('paused', claim);
     this.emit('claims');
-    await this.say(claim.id, 'Paused: you are editing this section, so I stopped. Reply "done" here when I can continue.').catch(() => {});
+    await this.say(claim.id, 'Paused: you are editing this section, so I stopped. Reply with just "done" here when I can continue.').catch(() => {});
   }
 
   private resume(claim: Claim, why: string): void {
@@ -288,7 +286,7 @@ export class Coop extends EventEmitter {
     this.claims.set(id, claim);
     this.claimDocs.set(id, doc);
 
-    await this.say(id, `Agent is editing this section: ${task}\nPlease leave it to me for now. If you need to change it, go ahead: I will pause and wait until you reply "done".`);
+    await this.say(id, `Agent is editing this section: ${task}\nPlease leave it to me for now. If you need to change it, go ahead: I will pause and wait until you reply with just "done".`);
     const text = doc.content.slice(claim.range.start, claim.range.end);
     await doc.submit([{ p: claim.range.start, c: text, t: id }]);
     await this.live.moveCursor(doc, claim.range.start);
@@ -382,7 +380,7 @@ export class Coop extends EventEmitter {
       'Suggested change' + (note ? ` (${note})` : '') + ':',
       newText,
       '',
-      'Reply "accept" to apply it, or "reject" to drop it.',
+      'Reply with just "accept" to apply it, or "reject" to drop it. Anything else is ignored.',
     ];
     await this.say(id, lines.join('\n'));
     await doc.submit([{ p: at, c: oldText, t: id }]);
@@ -410,8 +408,9 @@ export class Coop extends EventEmitter {
       // The first message is the suggestion itself; later ones from us are status notes.
       const replies = (thread.messages || []).slice(1).filter(m => !this.ourMessageIds.has((m as any).id));
       const lastReply = replies.length ? String(replies[replies.length - 1].content || '') : '';
-      const accepted = lastReply && ACCEPT_WORDS.test(lastReply) && !REJECT_WORDS.test(lastReply);
-      const rejected = (lastReply && REJECT_WORDS.test(lastReply)) || (thread.resolved && !accepted);
+      const command = lastReply ? parseThreadCommand(lastReply, suggestion.id) : null;
+      const accepted = command === 'accept';
+      const rejected = command === 'reject' || (thread.resolved && !accepted);
       if (accepted) {
         try {
           const doc = await this.live.doc(suggestion.path);

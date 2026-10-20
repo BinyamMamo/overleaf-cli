@@ -11,7 +11,7 @@
  * cookie headless, without a window, until Overleaf really logs the user out.
  */
 
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { OverleafClient } from './client.js';
 import {
@@ -184,4 +184,16 @@ export async function refreshSessionFromBrowser(options: Omit<BrowserLoginOption
   } catch {
     return null;
   }
+}
+
+/**
+ * Delete every saved browser profile, so nothing can renew the session
+ * without a new `olf login`. Returns the profile names removed.
+ */
+export function clearBrowserProfiles(): string[] {
+  const root = profilesRoot();
+  if (!existsSync(root)) return [];
+  const names = readdirSync(root).filter(name => name !== 'active');
+  rmSync(root, { recursive: true, force: true });
+  return names;
 }

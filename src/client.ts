@@ -28,6 +28,41 @@ const pkg = JSON.parse(readFileSync(join(__dirname, '..', 'package.json'), 'utf-
 const USER_AGENT = `olcli/${pkg.version}`;
 
 const DEFAULT_BASE_URL = 'https://www.overleaf.com';
+
+const CREDENTIAL_HEADERS = ['cookie', 'x-csrf-token', 'authorization'];
+
+/**
+ * Decide how to follow one redirect, the way a browser would, and without
+ * leaking credentials. An HTTPS to HTTP downgrade is refused. A redirect to
+ * another origin drops the Cookie, CSRF and Authorization headers. 301, 302
+ * and 303 turn a POST into a body-less GET; 307 and 308 keep the method and
+ * body, but only within the same origin.
+ */
+export function planRedirect(
+  from: URL,
+  to: URL,
+  status: number,
+  hop: { method: string; headers: Record<string, string>; body: string | Buffer | undefined }
+): { method: string; headers: Record<string, string>; body: string | Buffer | undefined } {
+  if (from.protocol === 'https:' && to.protocol !== 'https:') {
+    throw new Error(`Refusing redirect from HTTPS to ${to.protocol.replace(':', '').toUpperCase()}: ${to.origin}`);
+  }
+  const sameOrigin = from.origin === to.origin;
+  const keepBody = status === 307 || status === 308;
+  if (keepBody && !sameOrigin && hop.body !== undefined) {
+    throw new Error(`Refusing to resend a request body to another origin: ${to.origin}`);
+  }
+  const headers: Record<string, string> = {};
+  for (const [key, value] of Object.entries(hop.headers)) {
+    const lower = key.toLowerCase();
+    if (!sameOrigin && CREDENTIAL_HEADERS.includes(lower)) continue;
+    if (!keepBody && (lower === 'content-type' || lower === 'content-length')) continue;
+    headers[key] = value;
+  }
+  if (keepBody) return { method: hop.method, headers, body: hop.body };
+  const method = hop.method === 'GET' || hop.method === 'HEAD' ? hop.method : 'GET';
+  return { method, headers, body: undefined };
+}
 const RESOURCE_PATH_FAILURE_HINT = ' (Perhaps the resource file you specified does not exist in the project?)';
 
 export interface Project {
@@ -546,11 +581,12 @@ export class OverleafClient {
       bodyBuffer = options.body as string | Buffer;
     }
 
-    const doRequest = (reqUrl: string, redirectsLeft: number): Promise<{ status: number; ok: boolean; headers: Record<string, string | string[]>; body: string | Buffer | any }> => {
+    type Hop = { method: string; headers: Record<string, string>; body: string | Buffer | undefined };
+    const doRequest = (reqUrl: string, redirectsLeft: number, hop: Hop): Promise<{ status: number; ok: boolean; headers: Record<string, string | string[]>; body: string | Buffer | any }> => {
       return new Promise((resolve, reject) => {
         const parsedUrl = new URL(reqUrl);
         const transport = parsedUrl.protocol === 'https:' ? https : http;
-        const headers = this.normalizeHeaders({ ...extraHeaders, ...options.headers });
+        const { method, headers, body: hopBody } = hop;
 
         const req = transport.request(reqUrl, { method, headers }, (res) => {
           const status = res.statusCode || 0;
@@ -558,9 +594,15 @@ export class OverleafClient {
 
           if (status >= 300 && status < 400 && res.headers.location && redirectsLeft > 0) {
             this.logVerbose(`${method} ${reqUrl} -> ${status} redirect -> ${res.headers.location}`);
-            const redirectUrl = new URL(res.headers.location, reqUrl).toString();
             res.resume();
-            doRequest(redirectUrl, redirectsLeft - 1).then(resolve, reject);
+            let next: Hop;
+            try {
+              next = planRedirect(parsedUrl, new URL(res.headers.location, reqUrl), status, hop);
+            } catch (error) {
+              reject(error);
+              return;
+            }
+            doRequest(new URL(res.headers.location, reqUrl).toString(), redirectsLeft - 1, next).then(resolve, reject);
             return;
           }
 
@@ -602,15 +644,19 @@ export class OverleafClient {
           });
         }
 
-        if (bodyBuffer !== undefined) {
-          req.write(bodyBuffer);
+        if (hopBody !== undefined) {
+          req.write(hopBody);
         }
 
         req.end();
       });
     };
 
-    return doRequest(url, maxRedirects);
+    return doRequest(url, maxRedirects, {
+      method,
+      headers: this.normalizeHeaders({ ...extraHeaders, ...options.headers }),
+      body: bodyBuffer
+    });
   }
 
   /**

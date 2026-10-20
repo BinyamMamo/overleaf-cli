@@ -65,9 +65,9 @@ import {
   type PasswordCredentials
 } from './config.js';
 import { promptHidden, PromptCancelled, NotATerminal } from './prompt.js';
-import { refreshSessionFromBrowser } from './login.js';
+import { clearBrowserProfiles, refreshSessionFromBrowser } from './login.js';
 import { registerOlfCommands } from './olf-commands.js';
-import { LivePusher, saveBase, type PushResult } from './live/push.js';
+import { describeResult, pushFiles, saveBase, type FileResult } from './live/push.js';
 
 const program = new Command();
 
@@ -350,17 +350,22 @@ reports each one separately. Environment variables cannot be cleared by a
 child process, so OVERLEAF_SESSION and OVERLEAF_EMAIL/OVERLEAF_PASSWORD are
 reported instead of silently ignored - both take precedence over anything on
 disk.`)
-  .action(() => {
+  .option('--keep-browser', 'Keep the olf login browser profile (it can renew the session later)')
+  .action((options) => {
     // Read before clearing: afterwards there is nothing left to report on.
     const before = inspectStoredCredentials();
 
     clearConfig();
     const removedOlAuth = clearOlAuth();
+    // olf: the login browser profile can renew a session on its own, so a
+    // logout that leaves it behind is not a logout.
+    const removedProfiles = options.keepBrowser ? [] : clearBrowserProfiles();
 
     const cleared: string[] = [];
     if (before.sessionCookie) cleared.push('session cookie (global config)');
     if (before.password) cleared.push('saved password (global config)');
     if (removedOlAuth) cleared.push(removedOlAuth);
+    for (const name of removedProfiles) cleared.push(`browser profile "${name}" (olf login)`);
 
     if (cleared.length === 0) {
       console.log('Nothing stored to clear.');
@@ -379,6 +384,11 @@ disk.`)
       if (before.envPassword) console.log('  OVERLEAF_EMAIL and OVERLEAF_PASSWORD are set');
       console.log(chalk.dim('  These outrank anything on disk. Unset them to finish logging out.'));
     }
+    if (options.keepBrowser) {
+      console.log(chalk.yellow('The olf login browser profile was kept and can renew the session.'));
+    }
+    console.log(chalk.dim('A running olf-mcp keeps its open connection until it restarts. Overleaf itself is not signed out;'));
+    console.log(chalk.dim('use "Log out" on overleaf.com (or "Sessions" in account settings) to end the session there.'));
   });
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1287,6 +1297,8 @@ program
   .option('--all', 'Upload all files (not just changed)')
   .option('--delete', 'Propagate local deletions to the remote (opt-in; see docs)')
   .option('--dry-run', 'Show what would be uploaded without uploading')
+  .option('--overwrite', 'Allow replacing remote files (olf otherwise skips a file it cannot merge safely)')
+  .option('--json', 'Print one JSON result per file (path, transport, outcome, reason)')
   .option('--probe-folder', 'Probe for correct folder ID (use if uploads fail with folder_not_found)')
   .option('--no-default-ignore', 'Disable built-in LaTeX artifact ignore list (only .olignore applies)')
   .option('--no-ignore', 'Disable all ignore filtering (escape hatch — uploads everything)')
@@ -1468,37 +1480,28 @@ program
       let failed = 0;
       let folderNotFoundCount = 0;
 
-      // olf: text docs go up as live, merged edits; other files upload as before.
-      const pusher = await LivePusher.open(client, projectId!, targetDir);
-      const liveNotes: string[] = [];
-      for (const file of filesToUpload) {
-        try {
-          const content = readFileSync(file.path);
-          const live: PushResult = pusher ? await pusher.push(file.relativePath, content) : { status: 'not-doc' };
-          if (live.status === 'skipped') {
-            liveNotes.push(`${file.relativePath}: skipped, ${live.reason}`);
-            continue;
-          }
-          if (live.status === 'merged' && live.remoteChanged) {
-            writeFileSync(file.path, live.merged);
-            liveNotes.push(`${file.relativePath}: merged with remote changes made since your pull (local file updated)`);
-          }
-          if (live.status === 'not-doc') {
-            await client.uploadFile(projectId!, rootFolderId || null, file.relativePath, content, folderTree);
-          }
-          uploaded++;
-          spinner.text = `Uploading... (${uploaded}/${filesToUpload.length})`;
-        } catch (error: any) {
-          console.error(chalk.yellow(`\n  Warning: Failed to upload ${file.relativePath}: ${error.message}`));
+      // olf: text docs go up as live, merged edits and never get replaced
+      // silently; each file reports how it was sent.
+      const results: FileResult[] = await pushFiles({
+        client,
+        projectId: projectId!,
+        dir: targetDir,
+        overwrite: Boolean(options.overwrite),
+        files: filesToUpload.map(file => ({ path: file.relativePath, content: readFileSync(file.path), localPath: file.path })),
+        upload: async (path, content) => {
+          const result = await client.uploadFile(projectId!, rootFolderId || null, path, content, folderTree!);
+          if (!result.success) throw new Error('upload was not accepted');
+        },
+        onProgress: (done, total) => { spinner.text = `Pushing... (${done}/${total})`; },
+      });
+      for (const r of results) {
+        if (r.outcome === 'applied') uploaded++;
+        if (r.outcome === 'failed') {
           failed++;
-          if (error.message.includes('folder_not_found')) {
-            folderNotFoundCount++;
-          }
+          if ((r.reason || '').includes('folder_not_found')) folderNotFoundCount++;
         }
       }
-
-      await pusher?.close();
-      for (const note of liveNotes) console.log(chalk.dim(`\n  ${note}`));
+      const skippedCount = results.filter(r => r.outcome === 'skipped').length;
 
       // Deletions run after uploads: a rename arrives as add+remove, and doing
       // it in this order never leaves the remote without the file.
@@ -1526,13 +1529,26 @@ program
         writeFileSync(metaPath, JSON.stringify(meta, null, 2));
       }
 
+      if (options.json) {
+        spinner.stop();
+        console.log(JSON.stringify({ project: projectName, projectId, files: results }, null, 2));
+      } else {
+        for (const r of results) {
+          const line = `  ${describeResult(r)}`;
+          console.log(r.outcome === 'skipped' || r.outcome === 'failed' || r.transport === 'replace' ? chalk.yellow(line) : chalk.dim(line));
+        }
+      }
+      if (skippedCount > 0 && !options.json) {
+        console.log(chalk.yellow(`  ${skippedCount} file(s) skipped and left unchanged on Overleaf.`));
+      }
+
       if (failed > 0) {
-        spinner.warn(`Uploaded ${uploaded} file(s), ${failed} failed`);
+        spinner.warn(`Pushed ${uploaded} file(s), ${failed} failed`);
         if (folderNotFoundCount > 0 && !rootFolderId) {
           console.log(chalk.yellow('  Tip: Try running with --probe-folder to find the correct folder ID'));
         }
       } else {
-        spinner.succeed(`Uploaded ${uploaded} file(s) to "${projectName}"`);
+        if (!options.json) spinner.succeed(`Pushed ${uploaded} file(s) to "${projectName}"`);
       }
 
       if (deleted > 0) {
@@ -1562,6 +1578,7 @@ program
   .option('--verbose', 'Show detailed file operations')
   .option('--no-delete', 'Do not propagate local deletions to the remote (safer)')
   .option('--dry-run', 'Show what would change without applying')
+  .option('--overwrite', 'Allow replacing remote files (olf otherwise skips a file it cannot merge safely)')
   .option('--no-default-ignore', 'Disable built-in LaTeX artifact ignore list (only .olignore applies)')
   .option('--no-ignore', 'Disable all ignore filtering (escape hatch — uploads everything)')
   .option('--show-ignored', 'Print files skipped by ignore rules')
@@ -1765,19 +1782,24 @@ program
       // Upload local changes
       if (filesToUpload.length > 0 && !options.dryRun) {
         spinner.text = `Uploading ${filesToUpload.length} local change(s)...`;
-        const pusher = await LivePusher.open(client, projectId, targetDir);
-        try {
-          for (const file of filesToUpload) {
-            const live: PushResult = pusher ? await pusher.push(file.path, file.content) : { status: 'not-doc' };
-            if (live.status === 'not-doc') await client.uploadFile(projectId, null, file.path, file.content);
-            else if (live.status === 'skipped') console.log(chalk.yellow(`\n  ${file.path}: skipped, ${live.reason}`));
-            else if (live.status === 'merged' && live.remoteChanged) {
-              const localPath = resolveWithin(targetDir, file.path);
-              if (localPath) writeFileSync(localPath, live.merged);
-            }
+        // olf: sync just wrote the remote version as the base for files it
+        // pulled; kept-local files merge against their base from the last pull.
+        const results = await pushFiles({
+          client,
+          projectId,
+          dir: targetDir,
+          overwrite: Boolean(options.overwrite),
+          files: filesToUpload.map(file => ({ path: file.path, content: file.content, localPath: resolveWithin(targetDir, file.path) || undefined })),
+          upload: async (path, content) => {
+            const result = await client.uploadFile(projectId!, null, path, content);
+            if (!result.success) throw new Error('upload was not accepted');
+          },
+        });
+        for (const r of results) {
+          if (r.outcome !== 'unchanged') {
+            const line = `  ${describeResult(r)}`;
+            console.log(r.outcome === 'applied' && r.transport !== 'replace' ? chalk.dim(`\n${line}`) : chalk.yellow(`\n${line}`));
           }
-        } finally {
-          await pusher?.close();
         }
       }
 
