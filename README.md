@@ -12,7 +12,7 @@
   <img src="https://img.shields.io/badge/node-%E2%89%A520.18-2b2116?logo=nodedotjs&logoColor=white" alt="Node 20.18 or newer">
   <a href="docs/MCP.md"><img src="https://img.shields.io/badge/MCP-server-2b2116?logo=modelcontextprotocol&logoColor=white" alt="MCP server"></a>
   <img src="https://img.shields.io/badge/Overleaf-live%20editing-a8670a?logo=overleaf&logoColor=white" alt="Overleaf live editing">
-  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest"><img src="https://img.shields.io/github/v/release/BinyamMamo/overleaf-cli?label=extension&color=a8670a" alt="Latest extension release"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest"><img src="https://img.shields.io/badge/extension-download-a8670a?logo=googlechrome&logoColor=white" alt="Download the extension"></a>
   <a href="https://github.com/BinyamMamo/overleaf-cli/stargazers"><img src="https://img.shields.io/github/stars/BinyamMamo/overleaf-cli?style=flat&color=2b2116" alt="GitHub stars"></a>
 </p>
 
@@ -58,39 +58,26 @@ olf (overleaf-cli) works with any AI client that speaks MCP. It is a fork of [ol
 
 ## Quick start
 
-You need Node.js 20.18 or newer and Google Chrome (for the sign-in window).
+Needs Node.js 20.18+ and Google Chrome (for the sign-in window).
 
-**1. Install**
+| Step | Run | What happens |
+|:-:|---|---|
+| **1** | `git clone https://github.com/BinyamMamo/overleaf-cli`<br>`cd overleaf-cli && npm install && npm run build && npm link` | Installs the `olf` and `olf-mcp` commands |
+| **2** | `olf login` | A browser window opens on Overleaf. Sign in as usual (Google, ORCID, institution, password). The session renews itself later |
+| **3** | `olf setup claude-code` | Adds olf to your AI client (or `codex`, `cursor`, `claude-desktop`, `windsurf`), keeping the rest of its settings |
+| **4** | Restart the client | A running client does not load new MCP servers |
+| **5** | Ask: *"Use the olf live_status tool on My Paper"* | If the client says it has no such tool, it has not loaded olf yet |
 
-```bash
-git clone https://github.com/BinyamMamo/overleaf-cli
-cd overleaf-cli
-npm install && npm run build && npm link     # installs the olf and olf-mcp commands
-```
+Then open your project in Overleaf (or run `olf browser "My Paper"`) and ask for something specific:
 
-**2. Sign in**
+> Tighten the introduction of "My Paper" on Overleaf. Keep my citations.
 
-```bash
-olf login
-```
+`olf doctor` checks every stage separately (install, sign-in, MCP server, clients, extension) whenever something seems off.
 
-A browser window opens on Overleaf. Sign in the way you always do (Google, ORCID, institutional login or password). olf picks up the session by itself and renews it in the background later.
-
-**3. Connect your AI client**
-
-```bash
-olf setup claude-code      # or: codex, cursor, claude-desktop, windsurf
-```
-
-This adds olf to the client's MCP settings and keeps everything else in that file (a backup is saved next to it). Then:
-
-1. **Restart the client.** Installing olf does not load it into a client that is already running.
-2. **Check inside the client.** Ask it: *"Use the olf live_status tool on My Paper."* If it answers that it has no such tool, the client has not loaded olf yet.
-
-Run `olf doctor` at any time. It checks each stage separately: install, sign-in, MCP server, configured clients and the extension. Example output after `olf setup claude-code`:
+<details>
+<summary>Example <code>olf doctor</code> output</summary>
 
 ```text
-$ olf doctor
 Install
   ok    Node 26.8.1
   ok    MCP server at .../overleaf-cli/dist/mcp.js
@@ -98,16 +85,12 @@ Sign-in
   ok    Signed in to https://www.overleaf.com (16 projects visible)
   ok    Login browser profile saved: expired sessions renew without a window
 MCP server
-  ok    Starts and offers 31 tools, including the live editing tools
+  ok    Starts and offers 35 tools, including the live editing tools
 AI clients
   ok    claude-code: olf is configured (~/.claude.json)
 ```
 
-**4. Start working**
-
-Open your project in Overleaf (or let the agent open it with `olf browser "My Paper"`) and ask the agent for something specific:
-
-> Tighten the introduction of "My Paper" on Overleaf. Keep my citations.
+</details>
 
 ---
 
