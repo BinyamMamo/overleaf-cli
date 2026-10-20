@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/olf-lockup-dark.svg">
-    <img src="docs/assets/logo/olf-lockup-light.svg" alt="overleaf-cli (olf)" height="84">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/logo/olf-wordmark-dark.svg">
+    <img src="docs/assets/logo/olf-wordmark-light.svg" alt="overleaf-cli (olf)" height="84">
   </picture>
 </p>
 
