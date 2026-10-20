@@ -41,7 +41,7 @@ html, body {
   margin: 0;
   background: var(--paper);
   color: var(--ink);
-  font: 13px/1.45 -apple-system, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+  font: 13px/1.45 -apple-system, "Segoe UI Variable Text", "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
 }
 
 body { display: flex; flex-direction: column; min-height: 100vh; }
@@ -53,7 +53,7 @@ button {
 }
 
 .top { padding: 12px 14px 8px; border-bottom: 1px solid var(--rule); }
-.project { margin: 0; font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.project { margin: 0; font-size: 14px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .status { margin: 6px 0 0; color: var(--muted); font-size: 12px; }
 .status strong { color: var(--ink); font-weight: 600; }
 
