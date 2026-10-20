@@ -136,11 +136,11 @@ All olcli tools (`list_projects`, `pull_project`, `compile`, `download_pdf`, com
 olf works without the extension: the claim comment and the agent's cursor already show where the agent is working. The extension makes it clearer. It tints the claimed section, shows what the agent is doing and in which mode, and asks before you type inside the section.
 
 <p>
-  <a href="#install-the-extension"><img src="docs/assets/button-chrome.svg" alt="Chrome: supported" height="52"></a>
-  <a href="#install-the-extension"><img src="docs/assets/button-edge.svg" alt="Edge: supported" height="52"></a>
-  <a href="#install-the-extension"><img src="docs/assets/button-brave.svg" alt="Brave: supported" height="52"></a>
-  <img src="docs/assets/button-firefox.svg" alt="Firefox: not supported yet" height="52">
-  <img src="docs/assets/button-safari.svg" alt="Safari: not supported yet" height="52">
+  <a href="#install-the-extension"><img src="docs/assets/button-chrome.svg" alt="Chrome: supported" height="44"></a>
+  <a href="#install-the-extension"><img src="docs/assets/button-edge.svg" alt="Edge: supported" height="44"></a>
+  <a href="#install-the-extension"><img src="docs/assets/button-brave.svg" alt="Brave: supported" height="44"></a>
+  <img src="docs/assets/button-firefox.svg" alt="Firefox: not supported yet" height="44">
+  <img src="docs/assets/button-safari.svg" alt="Safari: not supported yet" height="44">
 </p>
 
 <a id="install-the-extension"></a>
