@@ -1548,7 +1548,9 @@ program
           console.log(chalk.yellow('  Tip: Try running with --probe-folder to find the correct folder ID'));
         }
       } else {
-        if (!options.json) spinner.succeed(`Pushed ${uploaded} file(s) to "${projectName}"`);
+        if (options.json) spinner.stop();
+        else if (skippedCount > 0) spinner.warn(`Pushed ${uploaded} file(s) to "${projectName}", skipped ${skippedCount}`);
+        else spinner.succeed(`Pushed ${uploaded} file(s) to "${projectName}"`);
       }
 
       if (deleted > 0) {

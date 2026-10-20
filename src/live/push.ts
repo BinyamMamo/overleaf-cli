@@ -238,7 +238,7 @@ export async function pushFiles(options: PushOptions): Promise<FileResult[]> {
     if (base === undefined || base !== remote) {
       const conflicts = base === undefined ? [] : conflictLines(base, remote, local);
       if (!overwrite && base === undefined) {
-        return { path, transport: 'none', outcome: 'skipped', reason: 'no record of what you pulled, so a merge could drop changes made on Overleaf. Run "olf sync" (merges), or --overwrite to make Overleaf match your file.' };
+        return { path, transport: 'none', outcome: 'skipped', reason: 'no record of what you pulled, so olf cannot tell your changes from changes made on Overleaf. Check with "olf diff --file ' + path + '", then push with --overwrite if Overleaf has nothing you need to keep.' };
       }
       if (!overwrite && conflicts.length) {
         return { path, transport: 'none', outcome: 'skipped', reason: `you and someone on Overleaf both changed the same text (near line ${conflicts.join(', ')}). Resolve it, or --overwrite to keep your version.` };
