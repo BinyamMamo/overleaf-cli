@@ -25,7 +25,7 @@ export const WRITE_TOOLS = new Set([
   'push_file', 'delete_entity', 'rename_entity', 'rename_project', 'create_project',
   'add_comment', 'reply_to_comment', 'resolve_comment',
   'claim_section', 'live_replace', 'release_claim', 'suggest_edit', 'check_suggestions',
-  'set_edit_mode', 'undo_task',
+  'set_edit_mode', 'undo_task', 'snapshot_restore',
 ]);
 
 /** Tool arguments that name a local file or folder. */

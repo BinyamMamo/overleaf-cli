@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { browserLogin, getProfileDir, persistLogin } from './login.js';
 import { Coop } from './live/coop.js';
 import { listTasks } from './live/tasklog.js';
+import { createGithubBackup, diffSnapshot, getSnapshotRemote, listSnapshots, pushSnapshots, restoreSnapshot, saveSnapshot, setSnapshotRemote, snapshotForTask, snapshotRepoDir } from './snapshot.js';
 import { CLIENTS, registeredClients, setupClient, snippetFor, type ClientName } from './setup.js';
 import { bridgeTokenExists, ensureBridgeToken } from './live/bridge.js';
 import { copyToClipboard, installExtensionFiles, isWsl, openExtensionsPage, openProjectBrowser, type BrowserName } from './browser.js';
@@ -249,6 +250,139 @@ export function registerOlfCommands(program: Command, getClient: () => Promise<O
       console.log(installExtensionFiles({ windows: isWsl() }).displayPath);
     });
 
+  const snapshot = program
+    .command('snapshot')
+    .description('Git snapshots of a project: save, list, compare, restore, back up to GitHub');
+  const projectOpt = '--project <name>';
+  const projectHelp = 'Project name or ID (default: the pulled project in this folder)';
+  const fail = (error: any) => {
+    console.error(chalk.red(error.message || String(error)));
+    process.exit(1);
+  };
+
+  snapshot
+    .command('save [message]')
+    .description('Save the project as Overleaf has it now')
+    .option(projectOpt, projectHelp)
+    .option('--pdf', 'Also compile and keep the PDF, log and file hashes (a submission snapshot)')
+    .option('--push', 'Push to the backup remote afterwards')
+    .action(async (message: string | undefined, options) => {
+      const spinner = ora('Downloading the project...').start();
+      try {
+        const client = await getClient();
+        const proj = await resolveProject(client, options.project);
+        const r = await saveSnapshot(client, proj.id, { message, pdf: options.pdf, push: options.push });
+        if (r.created) spinner.succeed(`Snapshot ${r.commit}: ${r.message} (${r.changed})`);
+        else spinner.info(`Nothing changed since snapshot ${r.commit} ("${r.message}")`);
+        if (r.pdf) console.log(chalk.dim(`  Build ${r.pdf.status}${r.pdf.included ? ', PDF stored' : ', no PDF produced'} in _olf-build/`));
+        if (r.push) console.log(r.push.ok ? chalk.dim('  Pushed to the backup remote') : chalk.yellow(`  Not pushed: ${r.push.error}. The local snapshot is saved.`));
+      } catch (error) {
+        spinner.fail((error as Error).message);
+        process.exit(1);
+      }
+    });
+
+  snapshot
+    .command('list')
+    .description('List snapshots, newest first')
+    .option(projectOpt, projectHelp)
+    .option('-n, --limit <n>', 'How many', '20')
+    .action(async (options) => {
+      try {
+        const proj = await resolveProject(await getClient(), options.project);
+        const items = listSnapshots(proj.id, Number(options.limit));
+        if (!items.length) return console.log(chalk.dim(`No snapshots of "${proj.name}" yet. Run: olf snapshot save "first draft"`));
+        for (const s of items) console.log(`${chalk.cyan(s.commit)}  ${s.date.replace('T', ' ').slice(0, 16)}  ${s.message}`);
+        const remote = getSnapshotRemote(proj.id);
+        console.log(chalk.dim(`\nRepository: ${snapshotRepoDir(proj.id)}${remote ? `  (backup: ${remote})` : ''}`));
+      } catch (error) {
+        fail(error);
+      }
+    });
+
+  snapshot
+    .command('diff [ref]')
+    .description('Compare a snapshot (default: the latest) with the project now')
+    .option(projectOpt, projectHelp)
+    .option('-p, --patch', 'Show the line changes, not just the file list')
+    .action(async (ref: string | undefined, options) => {
+      const spinner = ora('Comparing...').start();
+      try {
+        const client = await getClient();
+        const proj = await resolveProject(client, options.project);
+        const d = await diffSnapshot(client, proj.id, ref || 'HEAD', options.patch);
+        spinner.stop();
+        if (!d.changed.length) return console.log(chalk.green(`"${proj.name}" is the same as snapshot ${d.ref}.`));
+        console.log(chalk.bold(`Snapshot ${d.ref} compared with Overleaf now:`));
+        const label = { modified: chalk.yellow('changed'), added: chalk.green('new    '), deleted: chalk.red('removed') };
+        for (const c of d.changed) console.log(`  ${label[c.status]}  ${c.path}`);
+        if (d.patch) console.log('\n' + d.patch);
+      } catch (error) {
+        spinner.fail((error as Error).message);
+        process.exit(1);
+      }
+    });
+
+  snapshot
+    .command('restore <ref>')
+    .description('Make the project match a snapshot (saves the current state first)')
+    .option(projectOpt, projectHelp)
+    .option('--file <paths...>', 'Only restore these files or folders')
+    .option('--delete', 'Also delete files that did not exist in the snapshot')
+    .option('-y, --yes', 'Apply without asking (otherwise only shows the plan)')
+    .action(async (ref: string, options) => {
+      const spinner = ora('Planning the restore...').start();
+      try {
+        const client = await getClient();
+        const proj = await resolveProject(client, options.project);
+        const r = await restoreSnapshot(client, proj.id, ref, { paths: options.file, deleteExtra: options.delete, dryRun: !options.yes });
+        if (!r.plan.length) {
+          spinner.succeed(`Nothing to restore: "${proj.name}" already matches snapshot ${r.ref}.`);
+          return;
+        }
+        if (!options.yes) {
+          spinner.info(`Restoring snapshot ${r.ref} would change ${r.plan.length} file(s) in "${proj.name}":`);
+          for (const c of r.plan) console.log(`  ${c.status === 'added' ? 'delete ' : c.status === 'deleted' ? 'bring back' : 'restore'}  ${c.path}`);
+          console.log(chalk.dim('\nRun again with --yes to apply. The current state is saved as a snapshot first.'));
+          return;
+        }
+        spinner.succeed(`Restored snapshot ${r.ref} in "${proj.name}"`);
+        for (const f of r.files) console.log(chalk.dim(`  ${f.path}: ${f.outcome === 'applied' ? f.transport : `${f.outcome}${f.reason ? `, ${f.reason}` : ''}`}`));
+        for (const d of r.deleted) console.log(chalk.dim(`  ${d}: deleted`));
+        console.log(chalk.dim(`  Saved before: ${r.safetySnapshot}. Undo with: olf snapshot restore ${r.safetySnapshot} --yes`));
+      } catch (error) {
+        spinner.fail((error as Error).message);
+        process.exit(1);
+      }
+    });
+
+  snapshot
+    .command('backup')
+    .description('Back up snapshots to GitHub: --github creates a private repository, --url uses one you made')
+    .option(projectOpt, projectHelp)
+    .option('--github [name]', 'Create a private GitHub repository (needs the gh CLI)')
+    .option('--url <url>', 'Use an existing Git remote')
+    .action(async (options) => {
+      try {
+        const proj = await resolveProject(await getClient(), options.project);
+        if (options.url) {
+          setSnapshotRemote(proj.id, options.url);
+          const pushed = pushSnapshots(proj.id);
+          console.log(pushed.ok ? chalk.green(`Backing up to ${options.url}`) : chalk.yellow(`Remote set, but the push failed: ${pushed.error}`));
+        } else if (options.github) {
+          const name = typeof options.github === 'string' ? options.github : `olf-snapshots-${proj.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+          const url = createGithubBackup(proj.id, name);
+          console.log(chalk.green(`Created a private repository and pushed: ${url}`));
+        } else {
+          const pushed = pushSnapshots(proj.id);
+          console.log(pushed.ok ? chalk.green('Pushed snapshots to the backup remote.') : chalk.yellow(pushed.error));
+        }
+        console.log(chalk.dim('Add --push to "olf snapshot save" to back up each new snapshot.'));
+      } catch (error) {
+        fail(error);
+      }
+    });
+
   program
     .command('tasks [project]')
     .description('List recent agent tasks on a project and what each one changed')
@@ -266,7 +400,8 @@ export function registerOlfCommands(program: Command, getClient: () => Promise<O
         for (const task of tasks) {
           const when = task.edits[0]?.ts?.replace('T', ' ').slice(0, 16) || '';
           console.log(`${chalk.cyan(task.taskId)}  ${when}  ${task.task}${task.undone ? chalk.yellow('  (undone)') : ''}`);
-          console.log(chalk.dim(`  ${task.edits.length} edit(s) in ${[...new Set(task.edits.map(e => e.path))].join(', ')}`));
+          const snap = snapshotForTask(proj.id, task.taskId);
+          console.log(chalk.dim(`  ${task.edits.length} edit(s) in ${[...new Set(task.edits.map(e => e.path))].join(', ')}${snap ? `; snapshot ${snap}` : ''}`));
           if (options.diff) {
             for (const edit of task.edits) {
               console.log(chalk.red(`  - ${edit.before.replace(/\n/g, '\n    ')}`));

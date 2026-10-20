@@ -24,7 +24,8 @@
     "lint": "eslint src/",
     "test": "tsx --test test/*.test.ts",
     "prepare": "npm run build",
-    "pack:extension": "node scripts/pack-extension.mjs"
+    "pack:extension": "node scripts/pack-extension.mjs",
+    "upstream:check": "git remote get-url upstream >/dev/null 2>&1 || git remote add upstream https://github.com/aloth/olcli.git; git fetch -q upstream && git log --oneline HEAD..upstream/main"
   },
   "keywords": [
     "overleaf",

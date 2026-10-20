@@ -17,7 +17,7 @@ olf works with Claude Code, Codex, Cursor, Claude Desktop and Windsurf (any clie
 
 <p align="center"><sub>Real recording on overleaf.com: the agent rewrites "Results" live, you step in, it pauses, you press Done, it continues.</sub></p>
 
-**Contents:** [Quick start](#quick-start) · [How a session works](#how-a-session-works) · [For AI agents](#for-ai-agents) · [Browser extension](#browser-extension-optional) · [Commands](#commands) · [Push and sync](#push-and-sync) · [Safety](#safety-and-limits) · [olcli reference](docs/OLCLI.md)
+**Contents:** [Quick start](#quick-start) · [How a session works](#how-a-session-works) · [Git snapshots](#git-snapshots) · [For AI agents](#for-ai-agents) · [Browser extension](#browser-extension-optional) · [Commands](#commands) · [Push and sync](#push-and-sync) · [Safety](#safety-and-limits) · [olcli reference](docs/OLCLI.md)
 
 ---
 
@@ -100,6 +100,30 @@ Replies are read as commands only when the whole reply is the command. *"do not 
 
 ---
 
+## Git snapshots
+
+Overleaf's free plan keeps no history you can browse or restore. olf keeps its own: a local Git repository per project, with a snapshot every time the agent finishes a task and whenever you ask for one.
+
+```bash
+olf snapshot save "Draft sent to supervisor"      # inside a pulled folder, or add --project "My Paper"
+olf snapshot list                                  # newest first; agent tasks appear as "Agent: <task>"
+olf snapshot diff 4db370b --patch                  # what changed since that snapshot
+olf snapshot restore 4db370b                       # shows the plan; add --yes to apply
+olf snapshot backup --github                       # private GitHub repository as an off-site copy
+```
+
+| | |
+|---|---|
+| **Automatic** | Each released agent claim is committed as `Agent: <task> (n edits)`. `olf tasks` shows which snapshot holds each task. Turn off with `OLF_AUTO_SNAPSHOT=off` |
+| **Restore safely** | A restore first saves the current state, then changes text files through live edits, so people typing elsewhere are not interrupted. Use `--file` to restore single files |
+| **Submission snapshots** | `--pdf` also stores the compiled PDF, the build log and a manifest with a hash of every source file, in `_olf-build/` |
+| **Backup** | `olf snapshot backup --github` creates a private repository with the GitHub CLI; `--url` uses one you made. `olf snapshot save --push` sends each new snapshot. A failed push never touches the local snapshots |
+| **Private by default** | Snapshots live in the olf config folder (`olf snapshot list` prints the path). `.env` files and private keys in a project are never committed |
+
+A snapshot is the project at one moment. It does not record every keystroke between two snapshots.
+
+---
+
 ## For AI agents
 
 If you are an AI agent with olf's MCP tools, this is the workflow. (The same guidance is sent to your client by the MCP server itself.) Paste this block into `AGENTS.md` or `CLAUDE.md` of a project to make it explicit:
@@ -132,6 +156,8 @@ If you are an AI agent with olf's MCP tools, this is the workflow. (The same gui
 | `suggest_edit`, `check_suggestions` | Propose a change in a comment; apply it after an exact `accept` |
 | `set_edit_mode` | `direct` or `suggest` (only when the person asks) |
 | `undo_task`, `task_log` | Revert or review earlier tasks |
+| `snapshot_save`, `snapshot_list`, `snapshot_diff` | Git snapshots of the project; one is saved automatically at each `release_claim` |
+| `snapshot_restore` | Restore a snapshot; only after the person approves the diff (`confirm=true`) |
 | `open_in_browser` | Open the project for the person, signed in, extension loaded |
 
 All olcli tools (`list_projects`, `pull_project`, `compile`, `download_pdf`, comments and more) are still there. See [docs/MCP.md](docs/MCP.md).
@@ -191,7 +217,8 @@ The extension only talks to olf on your own computer (`127.0.0.1`), with a pairi
 | `olf browser [project]` | Open the project in the olf browser window, extension loaded |
 | `olf extension install --browser <name>` | Prepare the extension for your own Chrome, Edge or Brave |
 | `olf extension pair [--rotate]` | Show (or replace) the extension pairing code |
-| `olf tasks [project] [--diff]` | List agent tasks and what each one changed |
+| `olf snapshot save\|list\|diff\|restore\|backup` | Git snapshots of a project (see [Git snapshots](#git-snapshots)) |
+| `olf tasks [project] [--diff]` | List agent tasks, what each one changed, and its snapshot |
 | `olf undo [task] [project]` | Undo an agent task live, keeping your later edits |
 | `olf logout [--keep-browser]` | Remove the saved session and the login browser profile |
 
@@ -247,6 +274,17 @@ Report security issues as described in [SECURITY.md](SECURITY.md).
 ## How it works
 
 Overleaf's editor sends every keystroke as a small operation over a live connection, and the server merges operations from everyone with operational transformation. olf joins the same connection and sends its edits the same way, so the server merges them with yours. Claims, pauses and suggestions are built on Overleaf's own comment threads, which every plan has. The details are in [docs/LIVE.md](docs/LIVE.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
+## Staying up to date with olcli
+
+olf is its own project, but it still follows fixes in [aloth/olcli](https://github.com/aloth/olcli). To see and take them:
+
+```bash
+npm run upstream:check                 # adds the upstream remote if needed and lists new olcli commits
+git merge upstream/main                # then resolve, build and test
+```
+
+olf's own code lives in separate files (`src/live/`, `src/login.ts`, `src/snapshot.ts` and others), so most upstream changes merge cleanly.
 
 ## Credits and license
 

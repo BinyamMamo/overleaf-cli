@@ -21,6 +21,7 @@ import { LiveProject, type ChangeEvent, type LiveDoc } from './session.js';
 import { findSection, findSections, moveRange, type Range } from './sections.js';
 import { appendTaskLog, listTasks } from './tasklog.js';
 import { parseThreadCommand } from './commands.js';
+import { saveSnapshot } from '../snapshot.js';
 import { parseLatexErrors, type LatexProblem } from './latexlog.js';
 
 export type EditMode = 'direct' | 'suggest';
@@ -349,7 +350,7 @@ export class Coop extends EventEmitter {
     return { ok: result.status === 'success' && errors.length === 0, status: result.status, errors };
   }
 
-  async release(claimId: string, options: { compile?: boolean; force?: boolean } = {}): Promise<{ released: boolean; compile?: { ok: boolean; status: string; errors: LatexProblem[] }; claim: Claim }> {
+  async release(claimId: string, options: { compile?: boolean; force?: boolean } = {}): Promise<{ released: boolean; compile?: { ok: boolean; status: string; errors: LatexProblem[] }; claim: Claim; snapshot?: string }> {
     const claim = this.requireClaim(claimId);
     const doc = this.claimDocs.get(claimId)!;
     await doc.settle();
@@ -367,7 +368,14 @@ export class Coop extends EventEmitter {
     this.claimDocs.delete(claimId);
     this.saveState();
     this.emit('claims');
-    return { released: true, compile, claim };
+    // A Git snapshot at every task boundary, so each agent task can be
+    // compared and restored even on plans without Overleaf history.
+    let snapshot: string | undefined;
+    if (process.env.OLF_AUTO_SNAPSHOT !== 'off' && claim.edits > 0) {
+      snapshot = await saveSnapshot(this.client, this.projectId, { message: `Agent: ${claim.task} (${summary})`, taskId: claim.id })
+        .then(r => r.commit, () => undefined);
+    }
+    return { released: true, compile, claim, snapshot };
   }
 
   // ---------------------------------------------------------------- suggestions

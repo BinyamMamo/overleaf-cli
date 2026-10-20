@@ -13,6 +13,7 @@ import { Coop } from './coop.js';
 import { listTasks } from './tasklog.js';
 import { startBridge } from './bridge.js';
 import { openProjectBrowser } from '../browser.js';
+import { diffSnapshot, listSnapshots, restoreSnapshot, saveSnapshot } from '../snapshot.js';
 
 type Wrap = <T>(fn: () => Promise<T>) => Promise<{ content: Array<{ type: 'text'; text: string }> }>;
 
@@ -166,7 +167,7 @@ export function registerLiveTools(server: McpServer, getClient: () => Promise<Ov
     async ({ project: p, claim_id, compile, force }) => wrapTool(async () => {
       const coop = await getCoop(await getClient(), p);
       const result = await coop.release(claim_id, { compile, force });
-      return { released: result.released, compile: result.compile, edits: result.claim.edits };
+      return { released: result.released, compile: result.compile, edits: result.claim.edits, snapshot: result.snapshot };
     })
   );
 
@@ -215,6 +216,52 @@ export function registerLiveTools(server: McpServer, getClient: () => Promise<Ov
     async ({ project: p, task_id }) => wrapTool(async () => {
       const coop = await getCoop(await getClient(), p);
       return coop.undo(task_id);
+    })
+  );
+
+  server.tool(
+    'snapshot_save',
+    'Save a Git snapshot of the project as Overleaf has it now (olf keeps one local Git repository per project; Overleaf free plans have no history). Snapshots are also saved automatically when you release a claim. pdf=true also stores the compiled PDF, log and file hashes, for a submission milestone.',
+    { project, message: z.string().describe('What this snapshot marks, e.g. "Draft sent to supervisor"'), pdf: z.boolean().optional().default(false) },
+    async ({ project: p, message, pdf }) => wrapTool(async () => {
+      const client = await getClient();
+      return saveSnapshot(client, await resolveProjectId(client, p), { message, pdf });
+    })
+  );
+
+  server.tool(
+    'snapshot_list',
+    'List saved snapshots of a project, newest first (commit, date, message).',
+    { project, limit: z.number().int().min(1).max(100).optional().default(20) },
+    async ({ project: p, limit }) => wrapTool(async () => {
+      const client = await getClient();
+      return listSnapshots(await resolveProjectId(client, p), limit);
+    })
+  );
+
+  server.tool(
+    'snapshot_diff',
+    'Compare a snapshot with the project as Overleaf has it now. "deleted" means the file is in the snapshot but gone now; "added" means it exists now but not in the snapshot.',
+    { project, ref: z.string().optional().default('HEAD').describe('Snapshot commit, e.g. from snapshot_list'), patch: z.boolean().optional().default(false) },
+    async ({ project: p, ref, patch }) => wrapTool(async () => {
+      const client = await getClient();
+      return diffSnapshot(client, await resolveProjectId(client, p), ref, patch);
+    })
+  );
+
+  server.tool(
+    'snapshot_restore',
+    'Make the project match a snapshot. Text files change through live edits; a snapshot of the current state is saved first. ALWAYS show the person snapshot_diff and get their explicit approval, then call with confirm=true. Without confirm it only returns the plan.',
+    {
+      project,
+      ref: z.string(),
+      paths: z.array(z.string()).optional().describe('Only restore these files or folders'),
+      delete_extra: z.boolean().optional().default(false).describe('Also delete files that did not exist in the snapshot'),
+      confirm: z.boolean().optional().default(false),
+    },
+    async ({ project: p, ref, paths, delete_extra, confirm }) => wrapTool(async () => {
+      const client = await getClient();
+      return restoreSnapshot(client, await resolveProjectId(client, p), ref, { paths, deleteExtra: delete_extra, dryRun: !confirm });
     })
   );
 
