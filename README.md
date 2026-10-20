@@ -60,9 +60,14 @@ olf (overleaf-cli) works with any AI client that speaks MCP. It is a fork of [ol
 
 Needs Node.js 20.18+ and Google Chrome (for the sign-in window).
 
+```bash
+git clone https://github.com/BinyamMamo/overleaf-cli
+cd overleaf-cli && npm install && npm run build && npm link
+```
+
 | Step | Run | What happens |
 |:-:|---|---|
-| **1** | `git clone https://github.com/BinyamMamo/overleaf-cli`<br>`cd overleaf-cli && npm install && npm run build && npm link` | Installs the `olf` and `olf-mcp` commands |
+| **1** | the install block above | Installs the `olf` and `olf-mcp` commands |
 | **2** | `olf login` | A browser window opens on Overleaf. Sign in as usual (Google, ORCID, institution, password). The session renews itself later |
 | **3** | `olf setup claude-code` | Adds olf to your AI client (or `codex`, `cursor`, `claude-desktop`, `windsurf`), keeping the rest of its settings |
 | **4** | Restart the client | A running client does not load new MCP servers |
@@ -98,7 +103,7 @@ AI clients
 
 | 1. The agent claims a section | 2. You can still step in | 3. You hand it back |
 |---|---|---|
-| <img src="docs/assets/agent-editing.png" alt="The Results section is tinted and tagged Agent editing; a note says what the agent is doing" width="280"> | <img src="docs/assets/edit-anyway-dialog.png" alt="A dialog asks: The agent is editing Results. Wait or Edit anyway" width="280"> | <img src="docs/assets/paused.png" alt="The section is grey and tagged Agent paused; the note offers Done, let it continue" width="280"> |
+| <img src="docs/assets/agent-editing-crop.png" alt="The Results section is tinted and tagged Agent editing; a note says what the agent is doing" width="280"> | <img src="docs/assets/edit-anyway-dialog-crop.png" alt="A dialog asks: The agent is editing Results. Wait or Edit anyway" width="280"> | <img src="docs/assets/paused-crop.png" alt="The section is grey and tagged Agent paused; the note offers Done, let it continue" width="280"> |
 | The section gets an Overleaf comment saying what the agent is doing, and its cursor shows where it edits. With the extension, the section is tinted and a note shows the task. | Typing in the claimed section pauses the agent at once; its next edits are refused. With the extension you are first asked *Wait* or *Edit anyway*. | Reply **done** in the agent's comment, or press **Done, let it continue**. The agent reads the section again before it goes on. |
 
 When the agent finishes, it compiles the project. If LaTeX reports errors, it keeps the section and fixes them first. Then it releases the section with a short summary, and olf saves a [Git snapshot](#git-snapshots).
