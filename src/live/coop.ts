@@ -105,6 +105,7 @@ export class Coop extends EventEmitter {
   }
 
   private owner = true;
+  lastCompile?: { ok: boolean; status: string; errors: LatexProblem[]; at: string };
 
   get projectId(): string {
     return this.live.projectId;
@@ -367,6 +368,7 @@ export class Coop extends EventEmitter {
     this.claims.delete(claimId);
     this.claimDocs.delete(claimId);
     this.saveState();
+    this.lastCompile = compile ? { ...compile, at: new Date().toISOString() } : this.lastCompile;
     this.emit('claims');
     // A Git snapshot at every task boundary, so each agent task can be
     // compared and restored even on plans without Overleaf history.
@@ -421,23 +423,13 @@ export class Coop extends EventEmitter {
       const rejected = command === 'reject' || (thread.resolved && !accepted);
       if (accepted) {
         try {
-          const doc = await this.live.doc(suggestion.path);
-          await doc.replace(suggestion.oldText, suggestion.newText);
-          appendTaskLog({ projectId: this.projectId, taskId: suggestion.id, task: suggestion.note || 'suggestion', path: suggestion.path, kind: 'suggestion-applied', before: suggestion.oldText, after: suggestion.newText });
-          await this.say(suggestion.id, 'Applied.').catch(() => {});
-          this.ourResolves.add(suggestion.id);
-          await this.client.threadAction(this.projectId, suggestion.docId, suggestion.id, 'resolve').catch(() => {});
-          this.suggestions.delete(suggestion.id);
+          await this.applySuggestion(suggestion);
           result.applied.push(suggestion.id);
         } catch (error) {
           result.failed.push({ id: suggestion.id, reason: (error as Error).message });
         }
       } else if (rejected) {
-        if (!thread.resolved) {
-          this.ourResolves.add(suggestion.id);
-          await this.client.threadAction(this.projectId, suggestion.docId, suggestion.id, 'resolve').catch(() => {});
-        }
-        this.suggestions.delete(suggestion.id);
+        await this.dropSuggestion(suggestion, Boolean(thread.resolved));
         result.rejected.push(suggestion.id);
       } else {
         result.pending.push(suggestion.id);
@@ -447,7 +439,59 @@ export class Coop extends EventEmitter {
     return result;
   }
 
+  private async applySuggestion(suggestion: Suggestion & { docId: string }, note = 'Applied.'): Promise<void> {
+    const doc = await this.live.doc(suggestion.path);
+    await doc.replace(suggestion.oldText, suggestion.newText);
+    appendTaskLog({ projectId: this.projectId, taskId: suggestion.id, task: suggestion.note || 'suggestion', path: suggestion.path, kind: 'suggestion-applied', before: suggestion.oldText, after: suggestion.newText });
+    await this.say(suggestion.id, note).catch(() => {});
+    this.ourResolves.add(suggestion.id);
+    await this.client.threadAction(this.projectId, suggestion.docId, suggestion.id, 'resolve').catch(() => {});
+    this.suggestions.delete(suggestion.id);
+    this.saveState();
+  }
+
+  private async dropSuggestion(suggestion: Suggestion & { docId: string }, alreadyResolved = false, note?: string): Promise<void> {
+    if (note) await this.say(suggestion.id, note).catch(() => {});
+    if (!alreadyResolved) {
+      this.ourResolves.add(suggestion.id);
+      await this.client.threadAction(this.projectId, suggestion.docId, suggestion.id, 'resolve').catch(() => {});
+    }
+    this.suggestions.delete(suggestion.id);
+    this.saveState();
+  }
+
+  pendingSuggestions(): Suggestion[] {
+    return [...this.suggestions.values()].map(({ docId: _docId, ...rest }) => rest);
+  }
+
+  /** A decision made with a button in the olf panel, not by a comment reply. */
+  async decideSuggestion(id: string, accept: boolean): Promise<{ id: string; applied: boolean }> {
+    const suggestion = this.suggestions.get(id);
+    if (!suggestion) throw new Error('This suggestion is no longer pending.');
+    if (accept) await this.applySuggestion(suggestion, 'Applied (accepted in the olf panel).');
+    else await this.dropSuggestion(suggestion, false, 'Rejected in the olf panel.');
+    this.emit('claims');
+    return { id, applied: accept };
+  }
+
   // ---------------------------------------------------------------- undo
+
+  /** Which edits of a task can still be reverted, without changing anything. */
+  async undoPreview(taskId: string): Promise<{ taskId: string; task: string; edits: { path: string; before: string; after: string; revertible: boolean; reason?: string }[] }> {
+    const task = listTasks(this.projectId).find(t => t.taskId === taskId && !t.undone);
+    if (!task) throw new Error('That task is already undone or unknown.');
+    const edits = [];
+    for (const edit of [...task.edits].reverse()) {
+      try {
+        const doc = await this.live.doc(edit.path);
+        doc.locate(edit.after);
+        edits.push({ path: edit.path, before: edit.before, after: edit.after, revertible: true });
+      } catch (error) {
+        edits.push({ path: edit.path, before: edit.before, after: edit.after, revertible: false, reason: (error as Error).message });
+      }
+    }
+    return { taskId: task.taskId, task: task.task, edits };
+  }
 
   /**
    * Undo a task's edits, newest first. Each edit is reverted only where its

@@ -149,7 +149,7 @@ export async function saveSnapshot(client: OverleafClient, projectId: string, op
   const staged = !gitOk(dir, ['diff', '--cached', '--quiet']);
   const hasHead = gitOk(dir, ['rev-parse', '--verify', '-q', 'HEAD']);
   const message = options.message?.trim() || `Snapshot of "${name}"`;
-  if (!staged && hasHead) {
+  if (!staged && hasHead && !options.taskId) {
     return { created: false, commit: git(dir, ['rev-parse', '--short', 'HEAD']), message: git(dir, ['log', '-1', '--format=%s']), files: files.length, changed: 'no changes since the last snapshot', repo: dir, pdf };
   }
   const trailers = [`Overleaf-Project: ${name} (${projectId})`];

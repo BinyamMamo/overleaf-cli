@@ -95,3 +95,14 @@
   font-size: 12px;
   color: #6b5a42;
 }
+
+.olf-banner button.olf-link {
+  display: block;
+  margin-top: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #8a5608;
+  text-decoration: underline;
+  font-size: 12px;
+}

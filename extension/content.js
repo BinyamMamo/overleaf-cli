@@ -122,6 +122,11 @@
     const edits = here.edits === 1 ? '1 edit so far' : `${here.edits || 0} edits so far`;
     meta.textContent = `${here.mode === 'suggest' ? 'Suggest mode: changes arrive as comments' : 'Direct mode: edits appear live'}, ${edits}`;
     banner.appendChild(meta);
+    const panel = document.createElement('button');
+    panel.className = 'olf-link';
+    panel.textContent = 'Open the olf panel';
+    panel.onclick = () => ask({ type: 'open-panel' });
+    banner.appendChild(panel);
     if (here.state === 'paused') {
       const done = document.createElement('button');
       done.textContent = 'Done, let it continue';
@@ -203,6 +208,19 @@
     allowed = new Set([...allowed].filter(id => live.has(id) && claims.find(c => c.id === id)?.state === 'paused'));
     draw();
   }
+
+  // Tell the extension which project this tab shows (for the side panel).
+  ask({ type: 'project', project: projectId });
+
+  // The side panel's "Show" button: open the section through Overleaf's own
+  // file outline, which knows how to scroll the editor there.
+  chrome.runtime.onMessage.addListener(message => {
+    if (message.type !== 'jump') return;
+    const wanted = String(message.section || '').trim().toLowerCase();
+    const items = [...document.querySelectorAll('.outline-item-link, [class*="outline-item"] button')];
+    const match = items.find(el => el.textContent.trim().toLowerCase() === wanted) || items.find(el => el.textContent.trim().toLowerCase().includes(wanted));
+    if (match) match.click();
+  });
 
   setInterval(refresh, 1500);
   document.addEventListener('scroll', draw, true);

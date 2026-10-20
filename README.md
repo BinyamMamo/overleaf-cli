@@ -166,15 +166,31 @@ All olcli tools (`list_projects`, `pull_project`, `compile`, `download_pdf`, com
 
 ## Browser extension (optional)
 
-olf works without the extension: the claim comment and the agent's cursor already show where the agent is working. The extension makes it clearer. It tints the claimed section, shows what the agent is doing and in which mode, and asks before you type inside the section.
+olf works without the extension: the claim comment and the agent's cursor already show where the agent is working. The extension adds two things to Overleaf:
+
+- **In the editor:** the claimed section is tinted, a note says what the agent is doing, and typing inside the section first asks *Wait* or *Edit anyway*.
+- **The olf side panel:** click the olf icon in the toolbar. It follows the project in the open tab and shows what the agent is doing, waits for your decisions, and keeps the project's history.
+
+<p align="center">
+  <img src="docs/assets/panel-demo.gif" alt="The olf side panel next to the Overleaf editor. The agent edits Related Work; the panel shows it, the person presses Pause and then Let it continue. In suggest mode a change appears under Review and the person accepts it. History lists the tasks and Snapshots lists Git snapshots." width="820">
+</p>
+
+| Now | Review | History | Snapshots |
+|---|---|---|---|
+| <img src="docs/assets/panel-now.png" alt="Now tab: the claimed section, its task, Pause and Show in editor" width="190"> | <img src="docs/assets/panel-review.png" alt="Review tab: a suggested change with Accept and Reject" width="190"> | <img src="docs/assets/panel-history.png" alt="History tab: agent tasks with their changes and Undo" width="190"> | <img src="docs/assets/panel-snapshots.png" alt="Snapshots tab: save, compare and restore" width="190"> |
+| What the agent is editing. Pause it, let it continue, or jump to the section | Suggestions with a word-level diff. Accept or reject with one click | Every agent task and its changes. Undo shows first what can be reverted | Git snapshots: save one, compare it with now, restore it |
+
+**Download**
 
 <p>
-  <a href="#install-the-extension"><img src="docs/assets/button-chrome.svg" alt="Chrome: supported" height="44"></a>
-  <a href="#install-the-extension"><img src="docs/assets/button-edge.svg" alt="Edge: supported" height="44"></a>
-  <a href="#install-the-extension"><img src="docs/assets/button-brave.svg" alt="Brave: supported" height="44"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-chrome.svg" alt="Download for Chrome" height="44"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-edge.svg" alt="Download for Edge" height="44"></a>
+  <a href="https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip"><img src="docs/assets/button-brave.svg" alt="Download for Brave" height="44"></a>
   <img src="docs/assets/button-firefox.svg" alt="Firefox: not supported yet" height="44">
   <img src="docs/assets/button-safari.svg" alt="Safari: not supported yet" height="44">
 </p>
+
+The buttons download `olf-extension.zip` (the same file works in all three browsers).
 
 <a id="install-the-extension"></a>
 **Install it in one of three ways**
@@ -185,7 +201,7 @@ olf works without the extension: the claim comment and the agent's cursor alread
 olf browser "My Paper"
 ```
 
-**B. Use your own Chrome, Edge or Brave.**
+**B. Your own browser, prepared by olf.**
 
 ```bash
 olf extension install --browser edge     # or chrome, brave
@@ -199,7 +215,7 @@ olf copies the extension (already paired) to a folder, copies the folder path to
 
 On WSL, this installs for your Windows browser by default.
 
-**C. Download the zip.** Get [olf-extension.zip](https://github.com/BinyamMamo/overleaf-cli/releases/latest/download/olf-extension.zip), unzip it, load it as in B, then run `olf extension pair` and paste the code into the extension's popup.
+**C. From the downloaded zip.** Unzip it, load the `olf-extension` folder as in B, then open the olf panel, run `olf extension pair` and paste the code it prints.
 
 The extension only talks to olf on your own computer (`127.0.0.1`), with a pairing code. See [extension/README.md](extension/README.md).
 

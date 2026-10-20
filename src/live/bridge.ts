@@ -16,11 +16,59 @@ import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { getConfigPath } from '../config.js';
+import { diffWordsWithSpace } from 'diff';
 import type { Coop } from './coop.js';
+import { listTasks } from './tasklog.js';
+import { diffSnapshot, getSnapshotRemote, listSnapshots, restoreSnapshot, saveSnapshot, snapshotForTask } from '../snapshot.js';
 
 export const BRIDGE_PORT = Number(process.env.OLF_BRIDGE_PORT) || 47321;
-const MAX_BODY = 4096;
+const MAX_BODY = 8192;
 const ID = /^[0-9a-f]{24}$/;
+const REF = /^[0-9a-f]{4,40}$/;
+
+type Segment = ['=' | '-' | '+', string];
+
+/** Word-level diff for display, trimmed around long unchanged runs. */
+export function wordSegments(before: string, after: string): Segment[] {
+  const parts = diffWordsWithSpace(before, after);
+  // Many small changes read badly word by word; show old and new whole.
+  const changes = parts.filter(p => p.added || p.removed).length;
+  if (changes > 6) return [['-', before], ['=', '\n'], ['+', after]];
+  return parts.map(part => {
+    const kind: Segment[0] = part.added ? '+' : part.removed ? '-' : '=';
+    let text = part.value;
+    if (kind === '=' && text.length > 160) text = `${text.slice(0, 70)} ... ${text.slice(-70)}`;
+    return [kind, text];
+  });
+}
+
+/** Everything the side panel shows, in one response. */
+function panelFor(coop: Coop) {
+  const tasks = listTasks(coop.projectId).slice(0, 15).map(task => ({
+    id: task.taskId,
+    task: task.task,
+    at: task.edits[0]?.ts,
+    undone: task.undone,
+    snapshot: snapshotForTask(coop.projectId, task.taskId),
+    edits: task.edits.map(e => ({ path: e.path, kind: e.kind, diff: wordSegments(e.before, e.after) })),
+  }));
+  return {
+    project: { id: coop.projectId, name: coop.live.name },
+    mode: coop.mode,
+    claims: claimsFor(coop),
+    suggestions: coop.pendingSuggestions().map(sug => ({ id: sug.id, path: sug.path, note: sug.note, at: sug.createdAt, diff: wordSegments(sug.oldText, sug.newText) })),
+    tasks,
+    snapshots: listSnapshots(coop.projectId, 15),
+    backup: getSnapshotRemote(coop.projectId) || null,
+    compile: coop.lastCompile || null,
+  };
+}
+
+function str(value: unknown, max = 200): string {
+  const text = typeof value === 'string' ? value : '';
+  if (text.length > max) throw new Error('value too long');
+  return text;
+}
 
 function tokenPath(): string {
   return join(dirname(getConfigPath()), 'bridge-token');
@@ -153,6 +201,42 @@ export function handleBridgeRequest(token: string, port = BRIDGE_PORT) {
           ? await coop.pauseClaim(claimId, 'the person chose "Edit anyway" in the browser')
           : coop.resumeClaim(claimId, 'the person pressed "Done" in the browser');
         return send(res, 200, { id: claim.id, state: claim.state }, origin);
+      }
+      if (req.method === 'GET' && url.pathname === '/panel') {
+        const projectId = url.searchParams.get('project') || '';
+        if (!ID.test(projectId)) return send(res, 400, { error: 'bad project id' }, origin);
+        const coop = coops.get(projectId);
+        if (!coop) return send(res, 200, { live: false, projects: [...coops.values()].map(c => ({ id: c.projectId, name: c.live.name })) }, origin);
+        return send(res, 200, { live: true, ...panelFor(coop) }, origin);
+      }
+      if (req.method === 'POST' && ['/suggestion', '/undo-preview', '/undo', '/snapshot', '/snapshot-diff', '/restore'].includes(url.pathname)) {
+        const body = await readJson(req);
+        const projectId = str(body.project, 24);
+        if (!ID.test(projectId)) return send(res, 400, { error: 'bad project id' }, origin);
+        const coop = coops.get(projectId);
+        if (!coop) return send(res, 404, { error: 'project not live' }, origin);
+        const id = str(body.id, 40);
+        switch (url.pathname) {
+          case '/suggestion':
+            if (!ID.test(id) || !['accept', 'reject'].includes(String(body.action))) return send(res, 400, { error: 'bad request' }, origin);
+            return send(res, 200, await coop.decideSuggestion(id, body.action === 'accept'), origin);
+          case '/undo-preview':
+            if (!ID.test(id)) return send(res, 400, { error: 'bad task id' }, origin);
+            return send(res, 200, await coop.undoPreview(id), origin);
+          case '/undo':
+            if (!ID.test(id) || body.confirm !== true) return send(res, 400, { error: 'confirm required' }, origin);
+            return send(res, 200, await coop.undo(id), origin);
+          case '/snapshot': {
+            const message = str(body.message, 200).trim() || 'Saved from the olf panel';
+            return send(res, 200, await saveSnapshot(coop.client, projectId, { message }), origin);
+          }
+          case '/snapshot-diff':
+            if (!REF.test(id)) return send(res, 400, { error: 'bad snapshot id' }, origin);
+            return send(res, 200, await diffSnapshot(coop.client, projectId, id), origin);
+          case '/restore':
+            if (!REF.test(id)) return send(res, 400, { error: 'bad snapshot id' }, origin);
+            return send(res, 200, await restoreSnapshot(coop.client, projectId, id, { dryRun: body.confirm !== true }), origin);
+        }
       }
       if (req.method === 'GET' && url.pathname === '/health') {
         return send(res, 200, { ok: true, projects: [...coops.keys()] }, origin);

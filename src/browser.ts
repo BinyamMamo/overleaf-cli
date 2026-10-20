@@ -14,6 +14,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { getBaseUrl, getConfigPath, getSessionCookieName } from './config.js';
@@ -43,6 +44,11 @@ function windowsHome(): string | null {
   if (!win || win.includes('%')) return null;
   const converted = spawnSync('wslpath', ['-u', win], { encoding: 'utf-8' }).stdout?.trim();
   return converted || null;
+}
+
+/** Chrome's ID for an unpacked extension: sha256 of its path, as letters a-p. */
+export function unpackedExtensionId(path: string): string {
+  return [...createHash('sha256').update(path).digest('hex').slice(0, 32)].map(c => String.fromCharCode(97 + parseInt(c, 16))).join('');
 }
 
 export type BrowserName = 'chrome' | 'edge' | 'brave';
@@ -184,7 +190,11 @@ export async function openProjectBrowser(options: { projectId?: string; profile?
     if (!reused || !context.serviceWorkers().some(w => w.url().startsWith('chrome-extension://'))) {
       try {
         const cdp = await browser.newBrowserCDPSession();
-        const { id } = await cdp.send('Extensions.loadUnpacked' as any, { path: installExtensionFiles().dir }) as { id: string };
+        const dir = installExtensionFiles().dir;
+        // The profile remembers an extension loaded earlier and keeps running
+        // that copy. Remove it first so the files just copied are loaded.
+        await cdp.send('Extensions.uninstall' as any, { id: unpackedExtensionId(dir) }).catch(() => {});
+        const { id } = await cdp.send('Extensions.loadUnpacked' as any, { path: dir }) as { id: string };
         extension = id ? 'loaded' : 'unavailable';
       } catch {
         extension = 'unavailable';
